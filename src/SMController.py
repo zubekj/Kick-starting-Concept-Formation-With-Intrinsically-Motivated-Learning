@@ -321,8 +321,9 @@ class SMController:
         goals,
         match_value,
         match_ind,
-        cum_match,
+        max_match,
         policy_changed,
+        policy_ended,
         local_lr,
         local_sigma
     ):
@@ -374,8 +375,8 @@ class SMController:
         #match_distance = np.sqrt(np.log(match_value)/-params.match_sigma**-2)
         #match_distance = match_value.reshape((params.batch_size, params.stime, -1))
 
-        #self.predict.update(goals[policy_changed], cum_match[policy_changed, None])
-        self.predict.update(goals[match_ind], match_value[match_ind, None])
+        self.predict.update(goals[policy_ended], max_match[policy_ended, None])
+        #self.predict.update(goals[match_ind], match_value[match_ind, None])
 
         return n_items, match_ind, curr_loss, mean_modulation
 

@@ -375,7 +375,15 @@ class SMController:
         #match_distance = np.sqrt(np.log(match_value)/-params.match_sigma**-2)
         #match_distance = match_value.reshape((params.batch_size, params.stime, -1))
 
-        self.predict.update(goals[policy_ended], max_match[policy_ended, None])
+        # Predictor is updated based on the max_match achieved for each goal.
+        # If no timesteps where selected for a given goal (i.e. max_match = 0),
+        # this goal is not used for update.
+        predictor_update_steps = policy_ended & (max_match > 0)
+
+        print(goals[predictor_update_steps])
+        print(max_match[predictor_update_steps])
+
+        self.predict.update(goals[predictor_update_steps], max_match[predictor_update_steps, None])
         #self.predict.update(goals[match_ind], match_value[match_ind, None])
 
         return n_items, match_ind, curr_loss, mean_modulation

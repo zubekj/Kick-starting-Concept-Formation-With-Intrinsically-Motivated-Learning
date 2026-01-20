@@ -360,24 +360,39 @@ class TestPlotter:
 
         n_steps = max(len(self.vm.frames), len(match_value))
 
-        ax_r = None
+        goal_color = "#ff6"
+        touch_color = "#aa6"
+        proprio_color = "#6f6"
+        action_color = "#f66"
+
         last_goal_reset = 0
         for i in range(n_steps):
+            print(f"Rendering frame {i}")
             if i > 0 and cum_match[i] - cum_match[i - 1] < 0:
                 last_goal_reset = i
 
             f, axes = plt.subplots(nrows=1, ncols=4, subplot_kw={"aspect": "equal"}, figsize=(12,3))
-            for m in range(4):
-                axes[m].set_xlim(self.int_ylim)
-                axes[m].set_ylim(self.int_ylim)
+
+            axes[0].set_xlim(self.int_xlim)
+            axes[0].set_ylim(self.int_ylim)
+            axes[0].axis("off")
+
+            for m in range(1,4):
+                axes[m].set_xlim(0.98 * (np.array(self.int_xlim) - 0.1))
+                axes[m].set_ylim(0.98 * (np.array(self.int_ylim) - 0.1))
                 axes[m].axis("off")
 
+            
             axes[0].imshow(
                 self.vm.frames[i],
                 alpha=1.0,
                 aspect="auto",
                 interpolation="nearest",
                 extent=(0, 10, 0, 10),
+            )
+
+            axes[0].text(
+                self.xlim[0], 0.9 * self.ylim[1], f"t={i}", fontsize="large"
             )
 
             if visual_map_path is not None:
@@ -430,14 +445,17 @@ class TestPlotter:
             #     verticalalignment="center",
             # )
 
+            q = 0.3
             for m in range(1,4):
                 axes[m].scatter(
-                    f_gp[i, 0],
-                    f_gp[i, 1],
-                    marker="s",
+                    f_gp[i, 0] + q,
+                    f_gp[i, 1] + q,
+                    marker="h",
                     label="goal",
-                    color="r",
-                    s=80,
+                    color=goal_color,
+                    ec="#000",
+                    s=140,
+                    lw=3,
                 )
                 # axes.scatter(
                 #     f_vp[i, 0],
@@ -447,21 +465,31 @@ class TestPlotter:
                 #     color="b",
                 # )
                 axes[m].scatter(
-                    f_ssp[i, 0],
-                    f_ssp[i, 1],
-                    marker="s",
+                    f_ssp[i, 0] + q,
+                    f_ssp[i, 1] + q,
+                    marker="*",
                     label="somatosensory",
-                    color="g",
-                )
+                    color=touch_color,
+                    ec="#000",
+                    s=120,
+                    )
                 axes[m].scatter(
-                    f_pp[i, 0],
-                    f_pp[i, 1],
-                    marker="s",
+                    f_pp[i, 0] + q,
+                    f_pp[i, 1] + q,
+                    marker="*",
                     label="proprioception",
-                    color="c",
+                    color=proprio_color,
+                    ec="#000",
+                    s=120,
                 )
                 axes[m].scatter(
-                    f_ap[i, 0], f_ap[i, 1], marker="s", label="action", color="m"
+                    f_ap[i, 0] + q,
+                    f_ap[i, 1] + q,
+                    marker="*",
+                    label="action",
+                    color=action_color,
+                    ec="#000",
+                    s=120,
                 )
 
                 max_trace = 25
@@ -469,32 +497,34 @@ class TestPlotter:
                 if t0 < last_goal_reset:
                     t0 = last_goal_reset
                 for t in range(t0, i):
-                    # axes.plot(
-                    #     f_ssp[t : t + 2, 0],
-                    #     f_ssp[t : t + 2, 1],
-                    #     color="g",
-                    #     alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
-                    # )
+                    alpha = 1.0 - ((i - t) / (max_trace))
                     axes[m].plot(
-                        f_pp[t : t + 2, 0],
-                        f_pp[t : t + 2, 1],
-                        lw=3,
-                        color="c",
-                        # alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                        f_ssp[t : t + 2, 0] + q,
+                        f_ssp[t : t + 2, 1] + q,
+                        color=touch_color,
+                        lw=6,
+                        alpha=alpha,
                     )
                     axes[m].plot(
-                        f_gp[t : t + 2, 0],
-                        f_gp[t : t + 2, 1],
-                        lw=3,
-                        color="r",
-                        # alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                        f_pp[t : t + 2, 0] + q,
+                        f_pp[t : t + 2, 1] + q,
+                        lw=6,
+                        color=proprio_color,
+                        alpha=alpha,
                     )
                     axes[m].plot(
-                        f_ap[t : t + 2, 0],
-                        f_ap[t : t + 2, 1],
-                        lw=3,
-                        color="m",
-                        # alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                        f_gp[t : t + 2, 0] + q,
+                        f_gp[t : t + 2, 1] + q,
+                        lw=6,
+                        color=goal_color,
+                        alpha=alpha,
+                    )
+                    axes[m].plot(
+                        f_ap[t : t + 2, 0] + q,
+                        f_ap[t : t + 2, 1] + q,
+                        lw=6,
+                        color=action_color,
+                        alpha=alpha * 0.5,
                     )
 
             axes[2].legend(
@@ -504,7 +534,10 @@ class TestPlotter:
                 fontsize="small",
             )
             f.subplots_adjust(
-                left=0.15, bottom=0.25, right=0.85, top=0.9
+                top=0.95,
+                left=0.125,
+                bottom=0.25,
+                right=1 - 0.125,
             )
             f.canvas.draw()
 
@@ -512,7 +545,6 @@ class TestPlotter:
             f.savefig(imbuf, format="png", transparent=False)
             frame2 = Image.open(imbuf)
             plt.close(f)
-            print(f"Rendering frame {i}")
             
             self.vm.frames[i] = frame2
 

@@ -2100,8 +2100,6 @@ class Main:
                         f"{int(first_g_p[0])}_"
                         f"{int(first_g_p[1])}.gif",
                     )
-                #TEST
-                break
 
         if use_wandb:
             log_data = {}
@@ -2269,6 +2267,7 @@ class Main:
             render=render,
             render_all_maps=render_all_maps,
             n_episodes=self.params.tests,
+            zero_noise=True
         )
 
         action_onset = (

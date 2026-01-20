@@ -295,7 +295,8 @@ class SMController:
         # ss_rt_w = self.predict.spread(ss_rt)
         # p_rt_w = self.predict.spread(p_rt)
 
-        v_rt = (v_rt * v_rt_w).sum(axis=1) / v_rt_w.sum(axis=1)
+        v_rt_w_sum = v_rt_w.sum(axis=1)
+        v_rt = (v_rt * v_rt_w).sum(axis=1) / np.where(v_rt_w_sum != 0, v_rt_w_sum, 1)
         # ss_rt = (ss_rt * ss_rt_w).sum(axis=1) / ss_rt_w.sum(axis=1)
         # p_rt = (p_rt * p_rt_w).sum(axis=1) / p_rt_w.sum(axis=1)
 
@@ -419,14 +420,17 @@ class SMController:
                 self.stm_a.update(policies[match_ind], modulate_effect).item(),
             )
 
-        # update predictor: predictor predicts cumulated matches for a
-        # particular goal
-        # goals = goals.reshape((self.params.batch_size, self.params.stime, -1))
-        # match_distance = np.sqrt(np.log(match_value)/-self.params.match_sigma**-2)
-        # match_distance = match_value.reshape((self.params.batch_size, self.params.stime, -1))
+        # Update predictor: predictor predicts cumulated matches for a
+        # particular goal.
+        # Calculate match distance using the match value and match sigma.
+        # match_distance = np.sqrt(np.log(match_value) /
+        #                          -self.params.match_sigma**-2)
+        # Reshape match distance to match batch size and time steps.
+        # match_distance = match_value.reshape((self.params.batch_size,
+        #                                       self.params.stime, -1))
 
         # Predictor is updated based on the max_match achieved for each goal.
-        # If no timesteps where selected for a given goal (i.e. max_match = 0),
+        # If no timesteps were selected for a given goal (i.e., max_match = 0),
         # this goal is not used for update.
         predictor_update_steps = policy_ended & (max_match > 0)
 

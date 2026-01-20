@@ -125,6 +125,8 @@ class ParameterManager:
         with open(filepath, "w") as file:
             if mode == "user":
                 for key, value in self._params_to_dict().items():
+                    if isinstance(value, str):
+                        value = f'"{value}"'
                     file.write(f"{key} = {value}\n")
             elif mode == "json":
                 params = self._params_to_dict()

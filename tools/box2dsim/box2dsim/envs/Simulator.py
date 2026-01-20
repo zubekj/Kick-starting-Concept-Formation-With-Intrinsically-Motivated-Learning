@@ -527,6 +527,7 @@ class TestPlotter:
         f_pp,
         f_ap,
         f_gp,
+        initial_skip=50,
         visual_map_path=None,
     ):
 
@@ -546,7 +547,11 @@ class TestPlotter:
 
         n_steps = max(len(self.vm.frames), len(match_value))
 
-        ax_r = None
+        goal_color = "#ff6"
+        touch_color = "#aa6"
+        proprio_color = "#6f6"
+        action_color = "#f66"
+
         last_goal_reset = 0
         for i in range(n_steps):
             if i > 0 and cum_match[i] - cum_match[i - 1] < 0:
@@ -585,12 +590,12 @@ class TestPlotter:
                 horizontalalignment="right",
                 verticalalignment="center",
             )
-            self.fig.subplots_adjust(
-                left=0.15, bottom=0.25, right=0.85, top=0.9
-            )
+            # self.fig.subplots_adjust(
+            #     left=0.15, bottom=0.25, right=0.95, top=0.9
+            # )
             self.fig.canvas.draw()
             imbuf = io.BytesIO()
-            self.fig.savefig(imbuf, format="png", transparent=True)
+            self.fig.savefig(imbuf, format="png", transparent=False)
             frame2 = Image.open(imbuf)
 
             merged_frame = merge_frames(self.vm.frames[i], frame2)
@@ -599,8 +604,8 @@ class TestPlotter:
             if self.ax is not None:
                 plt.delaxes(self.ax)
             self.ax = self.fig.add_subplot(111, aspect="equal")
-            self.ax.set_xlim(self.int_ylim)
-            self.ax.set_ylim(self.int_ylim)
+            self.ax.set_xlim(0.98 * (np.array(self.int_ylim) - 0.1))
+            self.ax.set_ylim(0.98 * (np.array(self.int_ylim) - 0.1))
             self.ax.axis("off")
 
             if visual_map_path is not None:
@@ -632,14 +637,18 @@ class TestPlotter:
                 verticalalignment="center",
             )
 
-            self.ax.scatter(
-                f_gp[i, 0],
-                f_gp[i, 1],
-                marker="s",
-                label="goal",
-                color="r",
-                s=80,
-            )
+            q = 0.3
+            if i >= initial_skip:
+                self.ax.scatter(
+                    f_gp[i, 0] + q,
+                    f_gp[i, 1] + q,
+                    marker="h",
+                    label="goal",
+                    color=goal_color,
+                    ec="#000",
+                    s=140,
+                    lw=3,
+                )
             # self.ax.scatter(
             #     f_vp[i, 0],
             #     f_vp[i, 1],
@@ -648,54 +657,67 @@ class TestPlotter:
             #     color="b",
             # )
             self.ax.scatter(
-                f_ssp[i, 0],
-                f_ssp[i, 1],
-                marker="s",
+                f_ssp[i, 0] + q,
+                f_ssp[i, 1] + q,
+                marker="*",
                 label="somatosensory",
-                color="g",
+                color=touch_color,
+                ec="#000",
+                s=120,
             )
             self.ax.scatter(
-                f_pp[i, 0],
-                f_pp[i, 1],
-                marker="s",
+                f_pp[i, 0] + q,
+                f_pp[i, 1] + q,
+                marker="*",
                 label="proprioception",
-                color="c",
+                color=proprio_color,
+                ec="#000",
+                s=120,
             )
             self.ax.scatter(
-                f_ap[i, 0], f_ap[i, 1], marker="s", label="action", color="m"
+                f_ap[i, 0] + q,
+                f_ap[i, 1] + q,
+                marker="*",
+                label="action",
+                color=action_color,
+                ec="#000",
+                s=120,
             )
 
             max_trace = 25
             t0 = i - max_trace
             if t0 < last_goal_reset:
                 t0 = last_goal_reset
+
             for t in range(t0, i):
-                # self.ax.plot(
-                #     f_ssp[t : t + 2, 0],
-                #     f_ssp[t : t + 2, 1],
-                #     color="g",
-                #     alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
-                # )
+                alpha = 1.0 - ((i - t) / (max_trace))
                 self.ax.plot(
-                    f_pp[t : t + 2, 0],
-                    f_pp[t : t + 2, 1],
-                    lw=3,
-                    color="c",
-                    # alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                    f_ssp[t : t + 2, 0] + q,
+                    f_ssp[t : t + 2, 1] + q,
+                    color=touch_color,
+                    lw=6,
+                    alpha=alpha,
                 )
                 self.ax.plot(
-                    f_gp[t : t + 2, 0],
-                    f_gp[t : t + 2, 1],
-                    lw=3,
-                    color="r",
-                    # alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                    f_pp[t : t + 2, 0] + q,
+                    f_pp[t : t + 2, 1] + q,
+                    lw=6,
+                    color=proprio_color,
+                    alpha=alpha,
                 )
                 self.ax.plot(
-                    f_ap[t : t + 2, 0],
-                    f_ap[t : t + 2, 1],
-                    lw=3,
-                    color="m",
-                    # alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                    f_gp[t : t + 2, 0] + q,
+                    f_gp[t : t + 2, 1] + q,
+                    lw=6,
+                    color=goal_color,
+                    alpha=alpha,
+                )
+                self.ax.plot(
+                    f_ap[t : t + 2, 0] + q,
+                    f_ap[t : t + 2, 1] + q,
+                    lw=6,
+                    color=action_color,
+                    alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
                 )
 
             self.ax.legend(
@@ -705,12 +727,15 @@ class TestPlotter:
                 fontsize="small",
             )
             self.fig.subplots_adjust(
-                left=0.15, bottom=0.25, right=0.85, top=0.9
+                top=0.95,
+                left=0.125,
+                bottom=0.25,
+                right=1 - 0.125,
             )
             self.fig.canvas.draw()
 
             imbuf = io.BytesIO()
-            self.fig.savefig(imbuf, format="png", transparent=True)
+            self.fig.savefig(imbuf, format="png", transparent=False)
             frame2 = Image.open(imbuf)
 
             merged_frame = concat_frames_h(merged_frame, frame2)

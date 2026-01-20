@@ -5,8 +5,8 @@ import shutil
 import sys
 import time
 import types
-from itertools import cycle, repeat, chain
 from collections import defaultdict
+from itertools import chain, cycle, repeat
 from pathlib import Path
 
 import matplotlib
@@ -14,16 +14,16 @@ import numpy as np
 import pandas as pd
 import torch
 import wandb
-from sklearn.metrics import adjusted_mutual_info_score, mutual_info_score, silhouette_score
 from sklearn.cluster import KMeans
+from sklearn.metrics import mutual_info_score
 
 from params import Parameters
 from SMAgent import SMAgent
 from SMController import SMController
 from SMEnv import SMEnv, SMEnvParasite
 from SMGraphs import (comp_map, goal_frequency_map, log, proprio_map,
-                      remove_figs, somatosensory_map, trajectories_map,
-                      update_weight_data, visual_map)
+                      remove_figs, somatosensory_map, update_weight_data,
+                      visual_map)
 from tplot import TPlotManager
 
 
@@ -101,10 +101,11 @@ class Main:
         }
 
         self.obj_params_space = [
-            {"stretch_conditions": [stretch],
-             "rotation_conditions": [rotation],
-             "pos": [self.params.obj_y, self.params.obj_x],
-             }
+            {
+                "stretch_conditions": [stretch],
+                "rotation_conditions": [rotation],
+                "pos": [self.params.obj_y, self.params.obj_x],
+            }
             for stretch in self.params.obj_stretch_conditions
             for rotation in self.params.obj_rotation_conditions
         ]
@@ -156,10 +157,11 @@ class Main:
         }
 
         self.obj_params_space = [
-            {"stretch_conditions": [stretch],
-             "rotation_conditions": [rotation],
-             "pos": [self.params.obj_y, self.params.obj_x],
-             }
+            {
+                "stretch_conditions": [stretch],
+                "rotation_conditions": [rotation],
+                "pos": [self.params.obj_y, self.params.obj_x],
+            }
             for stretch in self.params.obj_stretch_conditions
             for rotation in self.params.obj_rotation_conditions
         ]
@@ -326,25 +328,39 @@ class Main:
         Calculate mutual information between object configuration and touch sensors.
         """
         mask = np.ones(policy_ended.shape, dtype=bool)
-        mask[:, :self.params.drop_first_n_steps + self.params.policy_selection_steps] = 0
+        mask[
+            :,
+            : self.params.drop_first_n_steps
+            + self.params.policy_selection_steps,
+        ] = 0
 
         policies = controller.model_data["batch_a"][mask]
-        unique_policies = controller.model_data["batch_a"][policy_ended].reshape(-1, policies.shape[-1])
+        unique_policies = controller.model_data["batch_a"][
+            policy_ended
+        ].reshape(-1, policies.shape[-1])
         policies = policies.reshape(-1, policies.shape[-1])
         km = KMeans(n_clusters=10)
         unique_policies_ind = km.fit_predict(unique_policies)
         policies_ind = km.predict(policies)
-        #policies_sscore = silhouette_score(unique_policies, unique_policies_ind)
-        policies_dispersion = (((unique_policies - unique_policies.mean(axis=0))**2).sum(axis=1)).mean()
-        policies_inertia_norm = km.inertia_ / unique_policies.shape[0] / policies_dispersion
+        # policies_sscore = silhouette_score(unique_policies, unique_policies_ind)
+        policies_dispersion = (
+            ((unique_policies - unique_policies.mean(axis=0)) ** 2).sum(axis=1)
+        ).mean()
+        policies_inertia_norm = (
+            km.inertia_ / unique_policies.shape[0] / policies_dispersion
+        )
 
         gripper = controller.model_data["batch_p"][mask]
         gripper = gripper.reshape(-1, gripper.shape[-1])
         km = KMeans(n_clusters=10)
         gripper_ind = km.fit_predict(gripper)
-        #gripper_sscore = silhouette_score(gripper, gripper_ind)
-        gripper_dispersion = (((gripper - gripper.mean(axis=0))**2).sum(axis=1)).mean()
-        gripper_inertia_norm = km.inertia_ / gripper.shape[0] / gripper_dispersion
+        # gripper_sscore = silhouette_score(gripper, gripper_ind)
+        gripper_dispersion = (
+            ((gripper - gripper.mean(axis=0)) ** 2).sum(axis=1)
+        ).mean()
+        gripper_inertia_norm = (
+            km.inertia_ / gripper.shape[0] / gripper_dispersion
+        )
 
         touch = controller.model_data["batch_ss"][mask]
         # Discretize touch into 4 regions corresponding to gripper edges
@@ -354,9 +370,10 @@ class Main:
         discrete_touch[touch.sum(axis=-1) == 0] = 0
         discrete_touch = discrete_touch.reshape(-1)
 
-        contexts = np.repeat(contexts[:, None],
-                             self.params.stime, axis=1)[mask].reshape(-1)
-        
+        contexts = np.repeat(contexts[:, None], self.params.stime, axis=1)[
+            mask
+        ].reshape(-1)
+
         # mi_score_context_touch = adjusted_mutual_info_score(contexts, discrete_touch)
         # mi_score_context_policy = adjusted_mutual_info_score(contexts, policies_ind)
         # mi_score_policy_touch = adjusted_mutual_info_score(policies_ind, discrete_touch)
@@ -364,16 +381,26 @@ class Main:
         # mi_score_policy_gripper = adjusted_mutual_info_score(policies_ind, gripper_ind)
 
         res = {
-            "mi_score_context_touch": mutual_info_score(contexts, discrete_touch),
-            "mi_score_context_policy": mutual_info_score(contexts, policies_ind),
-            "mi_score_policy_touch": mutual_info_score(policies_ind, discrete_touch),
-            "mi_score_context_gripper": mutual_info_score(contexts, gripper_ind),
-            "mi_score_policy_gripper": mutual_info_score(policies_ind, gripper_ind),
+            "mi_score_context_touch": mutual_info_score(
+                contexts, discrete_touch
+            ),
+            "mi_score_context_policy": mutual_info_score(
+                contexts, policies_ind
+            ),
+            "mi_score_policy_touch": mutual_info_score(
+                policies_ind, discrete_touch
+            ),
+            "mi_score_context_gripper": mutual_info_score(
+                contexts, gripper_ind
+            ),
+            "mi_score_policy_gripper": mutual_info_score(
+                policies_ind, gripper_ind
+            ),
             "policies_inertia_norm": policies_inertia_norm,
             "gripper_inertia_norm": gripper_inertia_norm,
         }
 
-        return res 
+        return res
 
     def action_outcome_step(
         self,
@@ -480,9 +507,9 @@ class Main:
                 sa = np.s_[:, t0:t, :]
 
                 # Use minimal sigma for building within-episode representations
-                #controller.updateParams(
+                # controller.updateParams(
                 #    self.params.base_internal_sigma, controller.curr_lr
-                #)
+                # )
                 # Use representation sigma for building within-episode representations
                 controller.updateParams(
                     self.params.representation_sigma, controller.curr_lr
@@ -536,12 +563,18 @@ class Main:
                 )
 
                 # update cumulative match only after the first policy was selected
-                if (t0 >= self.params.drop_first_n_steps
-                    + self.params.policy_selection_steps):
+                if (
+                    t0
+                    >= self.params.drop_first_n_steps
+                    + self.params.policy_selection_steps
+                ):
                     for i in range(t0, t):
                         # When the policy changes, max_match is set to the current value
-                        max_match[policy_changed[:, i], i:] =\
-                            controller.model_data["match_value"][policy_changed[:, i], i:]
+                        max_match[policy_changed[:, i], i:] = (
+                            controller.model_data["match_value"][
+                                policy_changed[:, i], i:
+                            ]
+                        )
 
                         # ####### Dataset Filtering
                         # Select time steps when match in internal representation of touch
@@ -681,8 +714,14 @@ class Main:
         epoch = self.epoch
         epoch_start = time.perf_counter()
         contexts = (np.arange(self.params.batch_size) % 3) + 1
-        gen = cycle(chain.from_iterable(repeat(x, 3) for x in range(len(self.obj_params_space))))
-        params_ind = np.array([next(gen) for _ in range(self.params.batch_size)])
+        gen = cycle(
+            chain.from_iterable(
+                repeat(x, 3) for x in range(len(self.obj_params_space))
+            )
+        )
+        params_ind = np.array(
+            [next(gen) for _ in range(self.params.batch_size)]
+        )
 
         self.initialize_model_data(self.controller)
 
@@ -748,15 +787,17 @@ class Main:
                 envs,
                 states,
             )
-        
+
             # Episode success rate: in how many episodes policy ever changes
             # after the initial one?
             episode_success_rate = (policy_changed.sum(axis=1) >= 2).mean()
             print(f"success rate {episode_success_rate}")
 
             # How many timesteps involve touching the object?
-            touch_freq = (self.controller.model_data["batch_ss"].sum(axis=-1) > 0).mean()
-            
+            touch_freq = (
+                self.controller.model_data["batch_ss"].sum(axis=-1) > 0
+            ).mean()
+
             # Mark end of each policy
             policy_ended = np.zeros(policy_changed.shape, dtype=bool)
             policy_ended[:, -1] = (
@@ -858,7 +899,7 @@ class Main:
                     local_sigma,
                 )
             )
-            
+
             # Store trajectory data
             mvpm = self.controller.model_data["match_value_per_mod"].reshape(
                 -1, 4
@@ -956,7 +997,7 @@ class Main:
             )
 
             # Do not update statistics if there are no successful timesteps
-            if matches.sum() > 0: 
+            if matches.sum() > 0:
                 print(f"  {np.mean(curr_loss):#8.7f}")
                 if use_wandb:
                     wandb.log(
@@ -1051,8 +1092,14 @@ class Main:
         epoch = self.epoch
         epoch_start = time.perf_counter()
         contexts = (np.arange(self.params.batch_size) % 3) + 1
-        gen = cycle(chain.from_iterable(repeat(x, 3) for x in range(len(self.obj_params_space))))
-        params_ind = np.array([next(gen) for _ in range(self.params.batch_size)])
+        gen = cycle(
+            chain.from_iterable(
+                repeat(x, 3) for x in range(len(self.obj_params_space))
+            )
+        )
+        params_ind = np.array(
+            [next(gen) for _ in range(self.params.batch_size)]
+        )
 
         self.controller_par = SMController(
             self.params,
@@ -1098,7 +1145,7 @@ class Main:
                     store_observations=True,
                     rand_obj_params=self.obj_params_space[params_ind[episode]],
                 )
-                #env.b2d_env.prepare_world(contexts[episode])
+                # env.b2d_env.prepare_world(contexts[episode])
                 states[episode] = env.reset(contexts[episode])
                 envs[episode] = env
                 state = states[episode]
@@ -1142,12 +1189,12 @@ class Main:
                 self.controller_par.model_data["batch_v"][episode, 0, :] = (
                     state_par["VISUAL_SENSORS"].ravel()
                 )
-                self.controller_par.model_data["batch_ss"][
-                    episode, 0, :
-                ] = state_par["TOUCH_SENSORS"]
-                self.controller_par.model_data["batch_p"][
-                    episode, 0, :
-                ] = state_par["JOINT_POSITIONS"][:5]
+                self.controller_par.model_data["batch_ss"][episode, 0, :] = (
+                    state_par["TOUCH_SENSORS"]
+                )
+                self.controller_par.model_data["batch_p"][episode, 0, :] = (
+                    state_par["JOINT_POSITIONS"][:5]
+                )
 
             (
                 matches_par,
@@ -1169,10 +1216,14 @@ class Main:
             episode_success_rate_par = (
                 policy_changed_par.sum(axis=1) >= 2
             ).mean()
-        
+
             # How many timesteps involve touching the object?
-            touch_freq = (self.controller.model_data["batch_ss"].sum(axis=-1) > 0).mean()
-            touch_freq_par = (self.controller_par.model_data["batch_ss"].sum(axis=-1) > 0).mean()
+            touch_freq = (
+                self.controller.model_data["batch_ss"].sum(axis=-1) > 0
+            ).mean()
+            touch_freq_par = (
+                self.controller_par.model_data["batch_ss"].sum(axis=-1) > 0
+            ).mean()
 
             # Mark end of each policy
             policy_ended = np.zeros(policy_changed.shape, dtype=bool)
@@ -1344,15 +1395,9 @@ class Main:
                 self.controller_par.model_data["batch_ss"].reshape(
                     (bsize, -1)
                 ),
-                self.controller_par.model_data["batch_p"].reshape(
-                    (bsize, -1)
-                ),
-                self.controller_par.model_data["batch_a"].reshape(
-                    (bsize, -1)
-                ),
-                self.controller_par.model_data["batch_g"].reshape(
-                    (bsize, -1)
-                ),
+                self.controller_par.model_data["batch_p"].reshape((bsize, -1)),
+                self.controller_par.model_data["batch_a"].reshape((bsize, -1)),
+                self.controller_par.model_data["batch_g"].reshape((bsize, -1)),
                 self.controller_par.model_data["match_value"].reshape(-1),
                 matches_par.reshape(-1),
                 max_match_par.reshape(-1),
@@ -1439,7 +1484,9 @@ class Main:
                         (-1, 2)
                     )[:, 0]
                     * 10
-                    + self.controller_par.model_data["v_p"].reshape((-1, 2))[:, 1],
+                    + self.controller_par.model_data["v_p"].reshape((-1, 2))[
+                        :, 1
+                    ],
                     "ss_p": self.controller_par.model_data["ss_p"].reshape(
                         (-1, 2)
                     )[:, 0]
@@ -1451,17 +1498,23 @@ class Main:
                         (-1, 2)
                     )[:, 0]
                     * 10
-                    + self.controller_par.model_data["p_p"].reshape((-1, 2))[:, 1],
+                    + self.controller_par.model_data["p_p"].reshape((-1, 2))[
+                        :, 1
+                    ],
                     "a_p": self.controller_par.model_data["a_p"].reshape(
                         (-1, 2)
                     )[:, 0]
                     * 10
-                    + self.controller_par.model_data["a_p"].reshape((-1, 2))[:, 1],
+                    + self.controller_par.model_data["a_p"].reshape((-1, 2))[
+                        :, 1
+                    ],
                     "g_p": self.controller_par.model_data["g_p"].reshape(
                         (-1, 2)
                     )[:, 0]
                     * 10
-                    + self.controller_par.model_data["g_p"].reshape((-1, 2))[:, 1],
+                    + self.controller_par.model_data["g_p"].reshape((-1, 2))[
+                        :, 1
+                    ],
                     "match_value_v": mvpm_par[:, 0].copy(),
                     "match_value_ss": mvpm_par[:, 1].copy(),
                     "match_value_p": mvpm_par[:, 2].copy(),
@@ -1522,7 +1575,7 @@ class Main:
             )
 
             # Do not update statistics if there are no successful timesteps
-            if matches.sum() > 0: 
+            if matches.sum() > 0:
                 print(f"  {np.mean(curr_loss):#8.7f}")
                 if use_wandb:
                     wandb.log(
@@ -1561,14 +1614,14 @@ class Main:
                             ][matches, 3].mean(),
                             "touch_freq": touch_freq,
                         },
-                        step=epoch
+                        step=epoch,
                     )
 
             # Do not update statistics if there are no successful timesteps
-            if matches_par.sum() > 0: 
+            if matches_par.sum() > 0:
                 if use_wandb:
                     wandb.log(
-                        {                       
+                        {
                             "min_comp_par": logs_par[epoch][0],
                             "mean_comp_par": logs_par[epoch][1],
                             "max_comp_par": logs_par[epoch][2],
@@ -1586,20 +1639,29 @@ class Main:
                             "grid_comp_mean_par": global_competence_par,
                             "episode_success_rate_par": episode_success_rate_par,
                             "policy_weights_norm_par": np.linalg.norm(
-                                self.controller_par.stm_a.get_weights(), axis=-1
+                                self.controller_par.stm_a.get_weights(),
+                                axis=-1,
                             ).mean(),
                             "match_value_v_par": self.controller_par.model_data[
                                 "match_value_per_mod"
-                            ][matches_par, 0].mean(),
+                            ][
+                                matches_par, 0
+                            ].mean(),
                             "match_value_ss_par": self.controller_par.model_data[
                                 "match_value_per_mod"
-                            ][matches_par, 1].mean(),
+                            ][
+                                matches_par, 1
+                            ].mean(),
                             "match_value_p_par": self.controller_par.model_data[
                                 "match_value_per_mod"
-                            ][matches_par, 2].mean(),
+                            ][
+                                matches_par, 2
+                            ].mean(),
                             "match_value_a_par": self.controller_par.model_data[
                                 "match_value_per_mod"
-                            ][matches_par, 3].mean(),
+                            ][
+                                matches_par, 3
+                            ].mean(),
                             "goal_activation": goal_activation[
                                 policy_ended
                             ].mean(),
@@ -1645,7 +1707,9 @@ class Main:
                 epoch_start = time.perf_counter()
 
                 self.evaluation_episodes(
-                    orig_controller=self.controller_par, epoch=epoch, suffix="_par"
+                    orig_controller=self.controller_par,
+                    epoch=epoch,
+                    suffix="_par",
                 )
 
                 self.controller_par.save(epoch, tag="parasite")
@@ -1778,9 +1842,13 @@ class Main:
         if env_states is not None:
             n_episodes = len(env_states)
 
-        gen = cycle(chain.from_iterable(repeat(x, 3) for x in range(len(self.obj_params_space))))
+        gen = cycle(
+            chain.from_iterable(
+                repeat(x, 3) for x in range(len(self.obj_params_space))
+            )
+        )
         params_ind = np.array([next(gen) for _ in range(n_episodes)])
-       
+
         self.initialize_model_data(controller, n_episodes)
         if env_states is not None:
             contexts = [s["context"] for s in env_states]
@@ -1824,7 +1892,6 @@ class Main:
                 "JOINT_POSITIONS"
             ][:5]
 
-
         # print(pd.Series(contexts).value_counts() / n_episodes)
         # print(pd.Series(params_ind).value_counts() / n_episodes)
         # d = pd.DataFrame({"contexts": contexts, "params_ind": params_ind})
@@ -1832,7 +1899,7 @@ class Main:
         # print(d.pivot_table(values="v", index="params_ind", columns="contexts", aggfunc="sum") / n_episodes)
         # exit(1)
 
-        # Notice: For some reason without noise eval results are much worse 
+        # Notice: For some reason without noise eval results are much worse
         # than with normal noise.
         if zero_noise:
             # Do not introduce noise to policy search
@@ -1851,19 +1918,35 @@ class Main:
             res = self.run_episodes(
                 agent,
                 controller,
-                contexts[i:(i+bsize)],
-                envs[i:(i+bsize)],
-                states[i:(i+bsize)],
+                contexts[i : (i + bsize)],
+                envs[i : (i + bsize)],
+                states[i : (i + bsize)],
             )
             for j, r in enumerate(res):
                 collected_res[j].append(r)
-            for key in ["batch_v", "batch_ss", "batch_p", "batch_a",
-                        "batch_c", "batch_log", "batch_g",
-                        "v_r", "ss_r", "p_r", "a_r",
-                        "v_p", "ss_p", "p_p", "a_p", "g_p",
-                        "match_value", "match_value_per_mod"
-                        ]:
-                controller_.model_data[key][i:(i+bsize)] = controller.model_data[key]
+            for key in [
+                "batch_v",
+                "batch_ss",
+                "batch_p",
+                "batch_a",
+                "batch_c",
+                "batch_log",
+                "batch_g",
+                "v_r",
+                "ss_r",
+                "p_r",
+                "a_r",
+                "v_p",
+                "ss_p",
+                "p_p",
+                "a_p",
+                "g_p",
+                "match_value",
+                "match_value_per_mod",
+            ]:
+                controller_.model_data[key][i : (i + bsize)] = (
+                    controller.model_data[key]
+                )
 
         controller = controller_
 
@@ -1941,7 +2024,9 @@ class Main:
         print(f"eval success rate {episode_success_rate}")
 
         # How many timesteps involve touching the object?
-        touch_freq = (controller.model_data["batch_ss"].sum(axis=-1) > 0).mean()
+        touch_freq = (
+            controller.model_data["batch_ss"].sum(axis=-1) > 0
+        ).mean()
 
         # Mark end of each policy
         policy_ended = np.zeros(policy_changed.shape, dtype=np.bool)
@@ -1959,9 +2044,9 @@ class Main:
             self.calc_match_inc_within_goal(policy_ended, controller)
         )
 
-        mi_metrics = self.calc_mi_metrics(contexts, params_ind,
-                                          controller,
-                                          policy_ended)
+        mi_metrics = self.calc_mi_metrics(
+            contexts, params_ind, controller, policy_ended
+        )
 
         if render is not None:
             for i in range(n_episodes):
@@ -2186,11 +2271,17 @@ class Main:
             n_episodes=self.params.tests,
         )
 
-        action_onset = self.params.drop_first_n_steps + self.params.policy_selection_steps
+        action_onset = (
+            self.params.drop_first_n_steps + self.params.policy_selection_steps
+        )
 
         first_goal_counts = defaultdict(int)
-        for _, row in trajectories[trajectories.index == action_onset].iterrows():
-            first_goal_counts[(int(row["prototype_x"]), int(row["prototype_y"]))] += 1
+        for _, row in trajectories[
+            trajectories.index == action_onset
+        ].iterrows():
+            first_goal_counts[
+                (int(row["prototype_x"]), int(row["prototype_y"]))
+            ] += 1
 
         goal_frequency_map(first_goal_counts)
         shutil.copyfile(

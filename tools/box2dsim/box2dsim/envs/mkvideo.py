@@ -57,7 +57,7 @@ class vidManager:
         self.fig.canvas.draw()
 
         imbuf = io.BytesIO()
-        self.fig.savefig(imbuf, format="png", transparent=True)
+        self.fig.savefig(imbuf, format="png", transparent=False)
         frame = Image.open(imbuf)
         self.frames.append(frame)
         self.t += 1

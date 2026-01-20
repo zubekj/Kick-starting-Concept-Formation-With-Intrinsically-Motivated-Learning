@@ -2,12 +2,14 @@
 
 import box2dsim
 import gymnasium as gym
-import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 from scipy import interpolate
 
 
 _ = box2dsim
+
+matplotlib.use("agg")
 
 # Set random seed for reproducibility
 rng = np.random.RandomState(62)
@@ -20,13 +22,8 @@ env = gym.make(
     },
 ).unwrapped
 
-
 # Simulation time and action setup
 stime = 120
-env.set_seed(10)
-stime = 100
-trials = 3
-
 actions = np.pi * np.array(
     [
         [0.00, 0.00, 0.00, 0.00, 0.00],
@@ -42,9 +39,7 @@ actions = np.pi * np.array(
 # Interpolate actions over the simulation time
 actions_interp = np.zeros([stime, 5])
 
-# Set random seed for reproducibility
-rng = np.random.RandomState(62)
-
+env.reset()
 for joint_idx, joint_timeline in enumerate(actions.T):
     x0 = np.linspace(0, 1, len(joint_timeline))
     f = interpolate.interp1d(x0, joint_timeline)
@@ -52,36 +47,45 @@ for joint_idx, joint_timeline in enumerate(actions.T):
     joint_timeline_interp = f(x)
     actions_interp[:, joint_idx] = joint_timeline_interp
 
-
-# Set up the plot
-fig = plt.figure(figsize=(3, 3))
-ax = fig.add_subplot(121)
-screen = ax.imshow(np.zeros([2, 2]), vmin=-0.3, vmax=1.3, cmap=plt.cm.binary)
-ax.set_axis_off()
-ax.set_title("Saliency")
-ax1 = fig.add_subplot(122)
-fov = ax1.imshow(np.zeros([2, 2, 3]), vmin=0, vmax=1)
-ax1.set_axis_off()
-ax1.set_title("Fovea")
-
 # Run the simulation
-for q in range(4):
-    for k in range(trials):
-        env.set_world(q)
-        env.reset()
-        for t in range(stime):
-            env.render()
+env.set_world(3)  # Set the current world
+for t in range(stime):
+    env.render("offline")
+    action = actions_interp[t]
+    o, *_ = env.step(action)
 
-            env.renderer.ax.set_title(
-                "%s object"
-                % env.world_object_names[env.world_id][0].capitalize()
-            )
 
-            action = actions_interp[t]
-            observation, *_ = env.step(action)
-            touch = observation["TOUCH_SENSORS"]
-            pos = observation["EYE_POS"]
-            if sum(touch) > 0:
-                print("".join([f"{x}" for x in touch]), pos)
+match_value = np.random.rand(stime)
+cum_match = np.random.rand(stime)
+max_match = np.random.rand(stime)
 
-#####
+f_vp = np.ones([stime, 2]) * [0, 0]
+f_ssp = np.vstack(
+    [
+        np.ones([stime // 6, 2]) * np.linspace(0, 9, stime // 6).reshape(-1, 1)
+        for x in range(6)
+    ]
+)
+f_pp = np.ones([stime, 2]) * [9, 0]
+f_ap = np.ones([stime, 2]) * [9, 9]
+f_gp = np.ones([stime, 2]) * [0, 9]
+
+
+# f_gp = np.random.randint(0, 10, (stime, 2))
+# f_vp = np.random.randint(0, 10, (stime, 2))
+# f_ssp = np.random.randint(0, 10, (stime, 2))
+# f_pp = np.random.randint(0, 10, (stime, 2))
+# f_ap = np.random.randint(0, 10, (stime, 2))
+
+env.renderer.add_info_to_frames(
+    match_value,
+    max_match,
+    cum_match,
+    f_vp,
+    f_ssp,
+    f_pp,
+    f_ap,
+    f_gp,
+    visual_map_path="visual_map.png",
+)
+env.renderer.close("demo")

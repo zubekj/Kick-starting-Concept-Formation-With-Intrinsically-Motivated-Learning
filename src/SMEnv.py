@@ -109,6 +109,25 @@ class SMEnv:
             visual_map_path="./www/visual_map.png",
         )
 
+    def render_info_three_maps(
+        self, match_value, max_match, cum_match, f_vp, f_ssp, f_pp, f_ap, f_gp
+    ):
+        assert self.render is not None
+        self.b2d_env.renderer.add_info_to_frames_three_maps(
+            match_value,
+            max_match,
+            cum_match,
+            f_vp,
+            f_ssp,
+            f_pp,
+            f_ap,
+            f_gp,
+            visual_map_path="./www/visual_map.png",
+            proprio_map_path="./www/proprio_map.png",
+            touch_map_path="./www/ssensory_map.png",
+        )
+
+
     def close(self):
         if self.plot is not None:
             self.b2d_env.renderer.close(self.plot)

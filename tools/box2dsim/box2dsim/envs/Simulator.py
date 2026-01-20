@@ -340,6 +340,183 @@ class TestPlotter:
             self.vm.save_frame()
             self.ts += 1
 
+    def add_info_to_frames_three_maps(
+        self,
+        match_value,
+        max_match,
+        cum_match,
+        f_vp,
+        f_ssp,
+        f_pp,
+        f_ap,
+        f_gp,
+        visual_map_path=None,
+        proprio_map_path=None,
+        touch_map_path=None,
+    ):
+        # Make the rendered frames and info matching lengths
+        if len(match_value) < len(self.vm.frames):
+            self.vm.frames = self.vm.frames[: len(match_value)]
+
+        n_steps = max(len(self.vm.frames), len(match_value))
+
+        ax_r = None
+        last_goal_reset = 0
+        for i in range(n_steps):
+            if i > 0 and cum_match[i] - cum_match[i - 1] < 0:
+                last_goal_reset = i
+
+            f, axes = plt.subplots(nrows=1, ncols=4, subplot_kw={"aspect": "equal"}, figsize=(12,3))
+            for m in range(4):
+                axes[m].set_xlim(self.int_ylim)
+                axes[m].set_ylim(self.int_ylim)
+                axes[m].axis("off")
+
+            axes[0].imshow(
+                self.vm.frames[i],
+                alpha=1.0,
+                aspect="auto",
+                interpolation="nearest",
+                extent=(0, 10, 0, 10),
+            )
+
+            if visual_map_path is not None:
+                im = plt.imread(visual_map_path)
+                im = im
+                axes[1].imshow(
+                    np.rot90(im),
+                    alpha=1.0,
+                    aspect="auto",
+                    interpolation="nearest",
+                    extent=(0, 10, 0, 10),
+                )
+            if proprio_map_path is not None:
+                im = plt.imread(proprio_map_path)
+                im = im
+                axes[2].imshow(
+                    im,
+                    alpha=1.0,
+                    aspect="auto",
+                    interpolation="nearest",
+                    extent=(0, 10, 0, 10),
+                )
+            if touch_map_path is not None:
+                im = plt.imread(touch_map_path)
+                im = im
+                axes[3].imshow(
+                    im,
+                    alpha=1.0,
+                    aspect="auto",
+                    interpolation="nearest",
+                    extent=(0, 10, 0, 10),
+                )
+
+
+            # Current match value
+            # axes[0].bar(
+            #     self.int_xlim[0] + 0.1,
+            #     self.int_ylim[0]
+            #     + match_value[i] * (self.int_ylim[1] - self.int_ylim[0]),
+            #     bottom=self.int_ylim[0],
+            #     width=0.2,
+            # )
+            # axes[0].text(
+            #     self.int_xlim[0] - 0.3,
+            #     self.int_ylim[0] + (self.int_ylim[1] - self.int_ylim[0]) * 0.5,
+            #     "match",
+            #     rotation=90,
+            #     fontsize="small",
+            #     horizontalalignment="right",
+            #     verticalalignment="center",
+            # )
+
+            for m in range(1,4):
+                axes[m].scatter(
+                    f_gp[i, 0],
+                    f_gp[i, 1],
+                    marker="s",
+                    label="goal",
+                    color="r",
+                    s=80,
+                )
+                # axes.scatter(
+                #     f_vp[i, 0],
+                #     f_vp[i, 1],
+                #     marker="s",
+                #     label="visual",
+                #     color="b",
+                # )
+                axes[m].scatter(
+                    f_ssp[i, 0],
+                    f_ssp[i, 1],
+                    marker="s",
+                    label="somatosensory",
+                    color="g",
+                )
+                axes[m].scatter(
+                    f_pp[i, 0],
+                    f_pp[i, 1],
+                    marker="s",
+                    label="proprioception",
+                    color="c",
+                )
+                axes[m].scatter(
+                    f_ap[i, 0], f_ap[i, 1], marker="s", label="action", color="m"
+                )
+
+                max_trace = 25
+                t0 = i - max_trace
+                if t0 < last_goal_reset:
+                    t0 = last_goal_reset
+                for t in range(t0, i):
+                    # axes.plot(
+                    #     f_ssp[t : t + 2, 0],
+                    #     f_ssp[t : t + 2, 1],
+                    #     color="g",
+                    #     alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                    # )
+                    axes[m].plot(
+                        f_pp[t : t + 2, 0],
+                        f_pp[t : t + 2, 1],
+                        lw=3,
+                        color="c",
+                        # alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                    )
+                    axes[m].plot(
+                        f_gp[t : t + 2, 0],
+                        f_gp[t : t + 2, 1],
+                        lw=3,
+                        color="r",
+                        # alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                    )
+                    axes[m].plot(
+                        f_ap[t : t + 2, 0],
+                        f_ap[t : t + 2, 1],
+                        lw=3,
+                        color="m",
+                        # alpha=(1.0 - ((i - t) / max_trace)) * 0.5,
+                    )
+
+            axes[2].legend(
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.01),
+                ncol=2,
+                fontsize="small",
+            )
+            f.subplots_adjust(
+                left=0.15, bottom=0.25, right=0.85, top=0.9
+            )
+            f.canvas.draw()
+
+            imbuf = io.BytesIO()
+            f.savefig(imbuf, format="png", transparent=False)
+            frame2 = Image.open(imbuf)
+            plt.close(f)
+            print(f"Rendering frame {i}")
+            
+            self.vm.frames[i] = frame2
+
+
     def add_info_to_frames(
         self,
         match_value,

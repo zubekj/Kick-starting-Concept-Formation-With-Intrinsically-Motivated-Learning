@@ -1757,6 +1757,7 @@ class Main:
         epoch=0,
         suffix="",
         render=None,
+        render_all_maps=False,
         env_states=None,
         save_stats=True,
         add_goal_suffix=False,
@@ -1978,16 +1979,28 @@ class Main:
                 f_ap = controller.model_data["a_p"][i, :episode_len]
                 f_gp = controller.model_data["g_p"][i, :episode_len]
 
-                envs[i].render_info(
-                    full_match_value,
-                    full_max_match,
-                    full_cum_match,
-                    f_vp,
-                    f_ssp,
-                    f_pp,
-                    f_ap,
-                    f_gp,
-                )
+                if render_all_maps:
+                    envs[i].render_info_three_maps(
+                        full_match_value,
+                        full_max_match,
+                        full_cum_match,
+                        f_vp,
+                        f_ssp,
+                        f_pp,
+                        f_ap,
+                        f_gp,
+                    )
+                else:
+                    envs[i].render_info(
+                        full_match_value,
+                        full_max_match,
+                        full_cum_match,
+                        f_vp,
+                        f_ssp,
+                        f_pp,
+                        f_ap,
+                        f_gp,
+                    )
                 envs[i].close()
 
                 if add_goal_suffix:
@@ -2002,6 +2015,8 @@ class Main:
                         f"{int(first_g_p[0])}_"
                         f"{int(first_g_p[1])}.gif",
                     )
+                #TEST
+                break
 
         if use_wandb:
             log_data = {}
@@ -2156,7 +2171,7 @@ class Main:
 
         return goals_env_states
 
-    def demo_episodes(self, epoch=0, render=None):
+    def demo_episodes(self, epoch=0, render=None, render_all_maps=False):
         update_weight_data()
         visual_map()
         somatosensory_map()
@@ -2167,6 +2182,7 @@ class Main:
             suffix="_goal",
             save_stats=False,
             render=render,
+            render_all_maps=render_all_maps,
             n_episodes=self.params.tests,
         )
 
@@ -2520,6 +2536,7 @@ if __name__ == "__main__":
         if demo:
             main.demo_episodes(
                 render="offline" if render else None,
+                render_all_maps=True
             )
         elif train_parasite:
             main.train_parasite(timing)

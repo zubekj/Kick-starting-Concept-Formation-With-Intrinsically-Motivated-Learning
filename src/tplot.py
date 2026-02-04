@@ -1,3 +1,5 @@
+# %%
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -44,9 +46,7 @@ class TPlotManager:
         """
         self._n_prototypes = n_prototypes
         self._side = int(np.sqrt((self._n_prototypes)))
-        self._fig, self._axes = plt.subplots(
-            self._side, self._side, figsize=figsize
-        )
+        self._fig, self._axes = plt.subplots(self._side, self._side, figsize=figsize)
         self._axes = self._axes.flatten()
         self._max_ts = max_ts
         self.plot_path = plot_path
@@ -72,8 +72,8 @@ class TPlotManager:
         """
         self.plots[i] = (
             so.Plot(data, x="x", y="y")
-            .add(so.Path(color="black"))
-            .add(so.Dot(), color="ts", legend=False)
+            .add(so.Dot(pointsize=3), color="ts", legend=False)
+            .add(so.Path(color="black", linewidth=0.6, alpha=0.4))
             .scale(color="YlOrBr")
             .on(self._axes[i])
             .plot()
@@ -88,15 +88,16 @@ class TPlotManager:
 
         Args:
             data (DataFrame): Data to plot, containing fields:
+                tr_id (int): the current trajectory
                 x (float): X-axis values.
                 y (float): Y-axis values.
                 prototype (int): Index of the prototype for this trajectory
                     measure.
                 ts (float): Color scale values for dots.
         """
-        # data = self.reduce_dimensions_with_pca(data)
+        data = self.reduce_dimensions_with_pca(data)
 
-        data[["x", "y"]] = data[["d1", "d2"]]
+        # data[["x", "y"]] = data[["d1", "d2"]]
 
         data.loc[:, "x"] = (data.x - data.x.min()) / np.ptp(data.x)
         data.loc[:, "y"] = (data.y - data.y.min()) / np.ptp(data.y)
@@ -106,13 +107,9 @@ class TPlotManager:
             ax.set_ylim(0, np.ptp(data.y))
 
         prototype_set = set()
-        for i, prototype in data.groupby("tr_id"):
-            i = int(
-                prototype["prototype_x"].iloc[0]
-                + prototype["prototype_y"].iloc[0] * self._side
-            )
+        for i, prototype in data.groupby("prototype"):
             if i not in prototype_set:
-                self.plot_prototype(prototype, i)
+                self.plot_prototype(prototype, int(i))
                 prototype_set.add(i)
         plt.savefig(self.plot_path)
 
@@ -143,33 +140,35 @@ class TPlotManager:
 def generate_demo_prototype_data(n_ts, n_prototypes):
     df = []
     for i in range(n_prototypes):
-        if np.random.rand() > 0.3:
+        if np.random.rand() > 0.0:
             direction = (0.4 + 0.2 * np.random.randn()) * 0.5 * np.pi
             curvature = 0.1 * np.random.randn()
             x = np.linspace(0, 30 * np.cos(direction), n_ts)
             curvature = 0.01 * np.random.randn()
             y = np.linspace(0, 30 * np.sin(direction), n_ts) + curvature * x**2
             curvature = 0.01 * np.random.randn()
-            z = (
-                np.linspace(0, 30 * np.sin(direction), n_ts) * 0.5
-                + curvature * x**2
-            )
+            z = np.linspace(0, 30 * np.sin(direction), n_ts) * 0.5 + curvature * x**2
             ts = np.arange(n_ts)
-            data = pd.DataFrame(
-                {"d1": x, "d2": y, "d3": z, "ts": ts, "goal_id": i}
-            )
+            data = pd.DataFrame({"d1": x, "d2": y, "d3": z, "ts": ts, "prototype": i})
             df.append(data)
     return pd.concat(df)
 
 
+# %%
+
 if __name__ == "__main__":
-    n_ts = 10
+    # %%
+    n_ts = 148
     n_prototypes = 100
 
     tp = TPlotManager(n_prototypes=n_prototypes)
+    # %%
 
     print("Generate demo data ...")
-    df = generate_demo_prototype_data(n_ts, n_prototypes)
+    df = pd.read_csv("trajectories.csv")
+    df.loc[:, "prototype"] = df.prototype_x * int(np.sqrt(n_prototypes)) + df.prototype_y
+    df = df.groupby(["prototype", "ts"]).mean().reset_index()
 
+    # %%
     print("Plot postures ...")
     tp.plot_prototypes(df)

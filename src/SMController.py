@@ -5,7 +5,7 @@ import pathlib
 import numpy as np
 
 from params import Parameters
-from SMPredict import SMPredict, SMPredictKDE
+from SMPredict import SMPredictKDE
 from stm import SMSTM
 
 
@@ -63,14 +63,10 @@ class SMController:
         # self.predict = SMPredict(
         #      self.params.internal_size, 1, lr=self.params.predict_lr
         # )
-        self.predict = SMPredictKDE(
-            self.params.internal_size, lr=self.params.predict_lr
-        )
-
+        self.predict = SMPredictKDE(self.params.internal_size, lr=self.params.predict_lr)
 
         weights_path = (
-            pathlib.Path(__file__).parent.resolve()
-            / "policy_weights_random.npy"
+            pathlib.Path(__file__).parent.resolve() / "policy_weights_random.npy"
         )
         initial_policy = np.load(weights_path, allow_pickle=True)
         # self.stm_a.set_weights(initial_policy)
@@ -78,7 +74,7 @@ class SMController:
         self.match_sigma = self.params.match_sigma
         self.sigma = self.params.internal_sigma
         self.curr_sigma = self.sigma
-        #self.comp_sigma = self.params.base_internal_sigma
+        # self.comp_sigma = self.params.base_internal_sigma
         self.comp_sigma = self.params.representation_sigma
         self.curr_lr = None
 
@@ -158,9 +154,7 @@ class SMController:
         noisy_vector = vector + noise_orthogonal
         # Rescale to maintain original norm
         noisy_vector = (
-            np.linalg.norm(vector)
-            * noisy_vector
-            / np.linalg.norm(noisy_vector)
+            np.linalg.norm(vector) * noisy_vector / np.linalg.norm(noisy_vector)
         )
 
         return noisy_vector
@@ -216,9 +210,7 @@ class SMController:
         mods = np.stack([v_p, ss_p, p_p, a_p])
         diffs = np.moveaxis(np.linalg.norm(mods - g_p, axis=-1), 0, -1)
         match_per_mod = np.exp(-(self.match_sigma**-2) * (diffs**2))
-        match = np.average(
-            match_per_mod, axis=-1, weights=self.params.modalities_weights
-        )
+        match = np.average(match_per_mod, axis=-1, weights=self.params.modalities_weights)
         return match, match_per_mod
 
     # TODO: This method is outdated and is kept for reference
@@ -254,17 +246,14 @@ class SMController:
         matches_increments_per_mod = np.stack(
             [
                 np.stack(
-                    [
-                        get_incr(matches_per_mod[:, row, col]).ravel()
-                        for col in range(5)
-                    ]
+                    [get_incr(matches_per_mod[:, row, col]).ravel() for col in range(5)]
                 )
                 for row in range(5)
             ]
         ).transpose(2, 0, 1)
-        matches_increments = np.sum(
-            matches_increments_per_mod, axis=(1, 2)
-        ) / np.sum(mask)
+        matches_increments = np.sum(matches_increments_per_mod, axis=(1, 2)) / np.sum(
+            mask
+        )
 
         # # requires that all sensory modalities change
         # mask_req = [
@@ -395,12 +384,10 @@ class SMController:
         cgoals_cond = np.zeros(cgoals.shape)
         for i in np.where(policy_changed == 1)[0]:
             cond_ind[i - self.params.policy_selection_steps : i] = 1
-            local_sigma_cond[i - self.params.policy_selection_steps : i] = (
-                local_sigma[i, None]
-            )
-            cgoals_cond[i - self.params.policy_selection_steps : i] = cgoals[
+            local_sigma_cond[i - self.params.policy_selection_steps : i] = local_sigma[
                 i, None
             ]
+            cgoals_cond[i - self.params.policy_selection_steps : i] = cgoals[i, None]
 
         local_sigma_cond = local_sigma_cond[cond_ind]
         modulate_cond = cgoals_cond[cond_ind]
@@ -413,9 +400,7 @@ class SMController:
             self.stm_a.update_params(sigma=local_sigma_effect)
             curr_loss = (
                 self.stm_v.update(visuals[cond_ind], modulate_cond).item(),
-                self.stm_ss.update(
-                    ssensories[match_ind], modulate_effect
-                ).item(),
+                self.stm_ss.update(ssensories[match_ind], modulate_effect).item(),
                 self.stm_p.update(proprios[match_ind], modulate_effect).item(),
                 self.stm_a.update(policies[match_ind], modulate_effect).item(),
             )
@@ -471,6 +456,7 @@ class SMController:
         suffix = "" if tag is None else f"-{tag}"
         storage_dir = f"storage{suffix}"
         epoch_dir = f"{storage_dir}/{epoch:06d}"
+        site_dir = "www"
         os.makedirs(storage_dir, exist_ok=True)
         os.makedirs(epoch_dir, exist_ok=True)
 
@@ -488,8 +474,13 @@ class SMController:
             allow_pickle=True,
         )
 
-        np.save(f"www/visual_weights{suffix}", self.stm_v.get_weights())
-        np.save(f"www/comp_grid{suffix}", self.comp_grid)
+        np.save(
+            f"{site_dir}/weights",
+            [weights],
+            allow_pickle=True,
+        )
+
+        np.save(f"{site_dir}/comp_grid{suffix}", self.comp_grid)
 
     def load(
         self,

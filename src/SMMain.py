@@ -62,9 +62,7 @@ class SensoryMotorCircle:
             self.action = agent.step(state)
         state = env.step(
             self.action
-            + np.random.normal(
-                scale=params.motor_noise, size=self.action.shape
-            )
+            + np.random.normal(scale=params.motor_noise, size=self.action.shape)
         )
 
         self.t += 1
@@ -276,9 +274,7 @@ class Main:
             "a_p": np.zeros([n_episodes, self.params.stime, 2]),
             "g_p": np.zeros([n_episodes, self.params.stime, 2]),
             "match_value": np.zeros([n_episodes, self.params.stime]),
-            "match_value_per_mod": np.zeros(
-                [n_episodes, self.params.stime, 4]
-            ),
+            "match_value_per_mod": np.zeros([n_episodes, self.params.stime, 4]),
         }
 
     def is_object_out_of_taskspace(self, state):
@@ -330,14 +326,13 @@ class Main:
         mask = np.ones(policy_ended.shape, dtype=bool)
         mask[
             :,
-            : self.params.drop_first_n_steps
-            + self.params.policy_selection_steps,
+            : self.params.drop_first_n_steps + self.params.policy_selection_steps,
         ] = 0
 
         policies = controller.model_data["batch_a"][mask]
-        unique_policies = controller.model_data["batch_a"][
-            policy_ended
-        ].reshape(-1, policies.shape[-1])
+        unique_policies = controller.model_data["batch_a"][policy_ended].reshape(
+            -1, policies.shape[-1]
+        )
         policies = policies.reshape(-1, policies.shape[-1])
         km = KMeans(n_clusters=10)
         unique_policies_ind = km.fit_predict(unique_policies)
@@ -355,12 +350,8 @@ class Main:
         km = KMeans(n_clusters=10)
         gripper_ind = km.fit_predict(gripper)
         # gripper_sscore = silhouette_score(gripper, gripper_ind)
-        gripper_dispersion = (
-            ((gripper - gripper.mean(axis=0)) ** 2).sum(axis=1)
-        ).mean()
-        gripper_inertia_norm = (
-            km.inertia_ / gripper.shape[0] / gripper_dispersion
-        )
+        gripper_dispersion = (((gripper - gripper.mean(axis=0)) ** 2).sum(axis=1)).mean()
+        gripper_inertia_norm = km.inertia_ / gripper.shape[0] / gripper_dispersion
 
         touch = controller.model_data["batch_ss"][mask]
         # Discretize touch into 4 regions corresponding to gripper edges
@@ -370,9 +361,9 @@ class Main:
         discrete_touch[touch.sum(axis=-1) == 0] = 0
         discrete_touch = discrete_touch.reshape(-1)
 
-        contexts = np.repeat(contexts[:, None], self.params.stime, axis=1)[
-            mask
-        ].reshape(-1)
+        contexts = np.repeat(contexts[:, None], self.params.stime, axis=1)[mask].reshape(
+            -1
+        )
 
         # mi_score_context_touch = adjusted_mutual_info_score(contexts, discrete_touch)
         # mi_score_context_policy = adjusted_mutual_info_score(contexts, policies_ind)
@@ -381,21 +372,11 @@ class Main:
         # mi_score_policy_gripper = adjusted_mutual_info_score(policies_ind, gripper_ind)
 
         res = {
-            "mi_score_context_touch": mutual_info_score(
-                contexts, discrete_touch
-            ),
-            "mi_score_context_policy": mutual_info_score(
-                contexts, policies_ind
-            ),
-            "mi_score_policy_touch": mutual_info_score(
-                policies_ind, discrete_touch
-            ),
-            "mi_score_context_gripper": mutual_info_score(
-                contexts, gripper_ind
-            ),
-            "mi_score_policy_gripper": mutual_info_score(
-                policies_ind, gripper_ind
-            ),
+            "mi_score_context_touch": mutual_info_score(contexts, discrete_touch),
+            "mi_score_context_policy": mutual_info_score(contexts, policies_ind),
+            "mi_score_policy_touch": mutual_info_score(policies_ind, discrete_touch),
+            "mi_score_context_gripper": mutual_info_score(contexts, gripper_ind),
+            "mi_score_policy_gripper": mutual_info_score(policies_ind, gripper_ind),
             "policies_inertia_norm": policies_inertia_norm,
             "gripper_inertia_norm": gripper_inertia_norm,
         }
@@ -416,13 +397,9 @@ class Main:
             t >= self.params.drop_first_n_steps
             and t < self.params.drop_first_n_steps + self.params.action_steps
         ):
-            state = smcycles[episode].noisy_step(
-                envs[episode], agent, states[episode]
-            )
+            state = smcycles[episode].noisy_step(envs[episode], agent, states[episode])
         else:
-            state = smcycles[episode].step(
-                envs[episode], agent, states[episode]
-            )
+            state = smcycles[episode].step(envs[episode], agent, states[episode])
 
         return state
 
@@ -434,9 +411,7 @@ class Main:
             controller.model_data["batch_v"][episode, t - 1, :] = state[
                 "VISUAL_SENSORS"
             ].ravel()
-            controller.model_data["batch_ss"][episode, t - 1, :] = state[
-                "TOUCH_SENSORS"
-            ]
+            controller.model_data["batch_ss"][episode, t - 1, :] = state["TOUCH_SENSORS"]
             controller.model_data["batch_p"][episode, t - 1, :] = state[
                 "JOINT_POSITIONS"
             ][:5]
@@ -475,9 +450,7 @@ class Main:
                     episode_len[episode] = t
 
                     # set correct policy/
-                    agent.updatePolicy(
-                        controller.model_data["batch_a"][episode, t, :]
-                    )
+                    agent.updatePolicy(controller.model_data["batch_a"][episode, t, :])
 
                     # action-outcome step
                     state = self.action_outcome_step(
@@ -540,9 +513,7 @@ class Main:
                     controller.model_data[key][sa].flat = Rp[i].flat
 
                 visual_activation[:, t0:t].flat = (
-                    controller.stm_v.get_activation(reshaped_data[0])
-                    .sum(axis=-1)
-                    .flat
+                    controller.stm_v.get_activation(reshaped_data[0]).sum(axis=-1).flat
                 )
 
                 # Do not update match during the initial empty steps
@@ -565,25 +536,20 @@ class Main:
                 # update cumulative match only after the first policy was selected
                 if (
                     t0
-                    >= self.params.drop_first_n_steps
-                    + self.params.policy_selection_steps
+                    >= self.params.drop_first_n_steps + self.params.policy_selection_steps
                 ):
                     for i in range(t0, t):
                         # When the policy changes, max_match is set to the current value
-                        max_match[policy_changed[:, i], i:] = (
-                            controller.model_data["match_value"][
-                                policy_changed[:, i], i:
-                            ]
-                        )
+                        max_match[policy_changed[:, i], i:] = controller.model_data[
+                            "match_value"
+                        ][policy_changed[:, i], i:]
 
                         # ####### Dataset Filtering
                         # Select time steps when match in internal representation of touch
                         # increases (touch onset event)
                         touch_mod = 1
                         mmask = (
-                            controller.model_data["match_value_per_mod"][
-                                :, i, touch_mod
-                            ]
+                            controller.model_data["match_value_per_mod"][:, i, touch_mod]
                             > controller.model_data["match_value_per_mod"][
                                 :, i - 1, touch_mod
                             ]
@@ -592,14 +558,13 @@ class Main:
                         # Select only timesteps where match increases *globally*
                         # over a certain threshold
                         mmask[
-                            controller.model_data["match_value"][:, i]
-                            - max_match[:, i]
+                            controller.model_data["match_value"][:, i] - max_match[:, i]
                             < self.params.match_incr_th
                         ] = 0
 
-                        max_match[mmask, i:] = controller.model_data[
-                            "match_value"
-                        ][mmask, i, None]
+                        max_match[mmask, i:] = controller.model_data["match_value"][
+                            mmask, i, None
+                        ]
 
                         # ####### Competence - Option 1
                         # # use controller.model_data['match_value'] as it is
@@ -611,27 +576,22 @@ class Main:
                         # Match is cumulated within a single policy and reset with
                         # policy change
                         cum_match[:, i] = (
-                            cum_match[:, i - 1] * (1 - policy_changed[:, i])
-                            + mmask
+                            cum_match[:, i - 1] * (1 - policy_changed[:, i]) + mmask
                         )
 
                 # Counts touch global increases up to threshold
-                success_mask = (
-                    cum_match[:, t - 1] >= self.params.cum_match_stop_th
-                )
+                success_mask = cum_match[:, t - 1] >= self.params.cum_match_stop_th
 
                 within_action_interval = (
                     t < self.params.stime
                     and t
-                    >= self.params.drop_first_n_steps
-                    + self.params.policy_selection_steps
+                    >= self.params.drop_first_n_steps + self.params.policy_selection_steps
                 )
 
                 action_interval_onset = (
                     t < self.params.stime
                     and t
-                    == self.params.drop_first_n_steps
-                    + self.params.policy_selection_steps
+                    == self.params.drop_first_n_steps + self.params.policy_selection_steps
                 )
 
                 if within_action_interval:
@@ -645,18 +605,10 @@ class Main:
                     # initial one)
                     policy_changed[success_mask, t] = 1
 
-                    data_slice = slice(
-                        t - self.params.policy_selection_steps, t
-                    )
-                    v_rt = controller.model_data["v_r"][
-                        success_mask, data_slice, :
-                    ]
-                    ss_rt = controller.model_data["ss_r"][
-                        success_mask, data_slice, :
-                    ]
-                    p_rt = controller.model_data["p_r"][
-                        success_mask, data_slice, :
-                    ]
+                    data_slice = slice(t - self.params.policy_selection_steps, t)
+                    v_rt = controller.model_data["v_r"][success_mask, data_slice, :]
+                    ss_rt = controller.model_data["ss_r"][success_mask, data_slice, :]
+                    p_rt = controller.model_data["p_r"][success_mask, data_slice, :]
 
                     goal_activation[success_mask, t:] = visual_activation[
                         success_mask,
@@ -682,12 +634,8 @@ class Main:
                     data = controller.model_data
                     data["batch_a"][success_mask, t:, :] = policies[:, None, :]
                     data["batch_g"][success_mask, t:, :] = goals[:, None, :]
-                    data["batch_c"][success_mask, t:, :] = competences[
-                        :, None, :
-                    ]
-                    data["batch_log"][success_mask, t:, :] = lcompetences[
-                        :, None, :
-                    ]
+                    data["batch_c"][success_mask, t:, :] = competences[:, None, :]
+                    data["batch_log"][success_mask, t:, :] = lcompetences[:, None, :]
 
         return (
             matches,
@@ -715,13 +663,9 @@ class Main:
         epoch_start = time.perf_counter()
         contexts = (np.arange(self.params.batch_size) % 3) + 1
         gen = cycle(
-            chain.from_iterable(
-                repeat(x, 3) for x in range(len(self.obj_params_space))
-            )
+            chain.from_iterable(repeat(x, 3) for x in range(len(self.obj_params_space)))
         )
-        params_ind = np.array(
-            [next(gen) for _ in range(self.params.batch_size)]
-        )
+        params_ind = np.array([next(gen) for _ in range(self.params.batch_size)])
 
         self.initialize_model_data(self.controller)
 
@@ -794,22 +738,16 @@ class Main:
             print(f"success rate {episode_success_rate}")
 
             # How many timesteps involve touching the object?
-            touch_freq = (
-                self.controller.model_data["batch_ss"].sum(axis=-1) > 0
-            ).mean()
+            touch_freq = (self.controller.model_data["batch_ss"].sum(axis=-1) > 0).mean()
 
             # Mark end of each policy
             policy_ended = np.zeros(policy_changed.shape, dtype=bool)
-            policy_ended[:, -1] = (
-                1  # End of an episode automatically ends policy
-            )
+            policy_ended[:, -1] = 1  # End of an episode automatically ends policy
             policy_ended[:, :-1] = policy_changed[:, 1:]
             # Initial policy change does not count
             policy_ended[
                 :,
-                self.params.drop_first_n_steps
-                + self.params.policy_selection_steps
-                - 1,
+                self.params.drop_first_n_steps + self.params.policy_selection_steps - 1,
             ] = 0
 
             # # Calculate within-episode match increase
@@ -884,9 +822,7 @@ class Main:
             (update_items, update_episodes, curr_loss, mean_modulation) = (
                 self.controller.update(
                     self.controller.model_data["batch_v"].reshape((bsize, -1)),
-                    self.controller.model_data["batch_ss"].reshape(
-                        (bsize, -1)
-                    ),
+                    self.controller.model_data["batch_ss"].reshape((bsize, -1)),
                     self.controller.model_data["batch_p"].reshape((bsize, -1)),
                     self.controller.model_data["batch_a"].reshape((bsize, -1)),
                     self.controller.model_data["batch_g"].reshape((bsize, -1)),
@@ -901,53 +837,29 @@ class Main:
             )
 
             # Store trajectory data
-            mvpm = self.controller.model_data["match_value_per_mod"].reshape(
-                -1, 4
-            )
+            mvpm = self.controller.model_data["match_value_per_mod"].reshape(-1, 4)
             internal_trajectory_data.append(
                 {
-                    "epoch": [epoch]
-                    * self.params.batch_size
-                    * self.params.stime,
+                    "epoch": [epoch] * self.params.batch_size * self.params.stime,
                     "episode": [
                         i
                         for i in range(self.params.batch_size)
                         for _ in range(self.params.stime)
                     ],
-                    "context": [
-                        c for c in contexts for _ in range(self.params.stime)
-                    ],
+                    "context": [c for c in contexts for _ in range(self.params.stime)],
                     "params_index": [
                         i for i in params_ind for _ in range(self.params.stime)
                     ],
-                    "timestep": list(range(self.params.stime))
-                    * self.params.batch_size,
-                    "v_p": self.controller.model_data["v_p"].reshape((-1, 2))[
-                        :, 0
-                    ]
-                    * 10
+                    "timestep": list(range(self.params.stime)) * self.params.batch_size,
+                    "v_p": self.controller.model_data["v_p"].reshape((-1, 2))[:, 0] * 10
                     + self.controller.model_data["v_p"].reshape((-1, 2))[:, 1],
-                    "ss_p": self.controller.model_data["ss_p"].reshape(
-                        (-1, 2)
-                    )[:, 0]
-                    * 10
-                    + self.controller.model_data["ss_p"].reshape((-1, 2))[
-                        :, 1
-                    ],
-                    "p_p": self.controller.model_data["p_p"].reshape((-1, 2))[
-                        :, 0
-                    ]
-                    * 10
+                    "ss_p": self.controller.model_data["ss_p"].reshape((-1, 2))[:, 0] * 10
+                    + self.controller.model_data["ss_p"].reshape((-1, 2))[:, 1],
+                    "p_p": self.controller.model_data["p_p"].reshape((-1, 2))[:, 0] * 10
                     + self.controller.model_data["p_p"].reshape((-1, 2))[:, 1],
-                    "a_p": self.controller.model_data["a_p"].reshape((-1, 2))[
-                        :, 0
-                    ]
-                    * 10
+                    "a_p": self.controller.model_data["a_p"].reshape((-1, 2))[:, 0] * 10
                     + self.controller.model_data["a_p"].reshape((-1, 2))[:, 1],
-                    "g_p": self.controller.model_data["g_p"].reshape((-1, 2))[
-                        :, 0
-                    ]
-                    * 10
+                    "g_p": self.controller.model_data["g_p"].reshape((-1, 2))[:, 0] * 10
                     + self.controller.model_data["g_p"].reshape((-1, 2))[:, 1],
                     "match_value_v": mvpm[:, 0].copy(),
                     "match_value_ss": mvpm[:, 1].copy(),
@@ -983,15 +895,9 @@ class Main:
             print(
                 ("%8.7f " * 3)
                 % (
-                    self.controller.model_data["batch_log"][
-                        policy_ended
-                    ].min(),
-                    self.controller.model_data["batch_log"][
-                        policy_ended
-                    ].mean(),
-                    self.controller.model_data["batch_log"][
-                        policy_ended
-                    ].max(),
+                    self.controller.model_data["batch_log"][policy_ended].min(),
+                    self.controller.model_data["batch_log"][policy_ended].mean(),
+                    self.controller.model_data["batch_log"][policy_ended].max(),
                 ),
                 end="",
             )
@@ -1034,18 +940,16 @@ class Main:
                             "match_value_a": self.controller.model_data[
                                 "match_value_per_mod"
                             ][matches, 3].mean(),
-                            "goal_activation": goal_activation[
-                                policy_ended
+                            "goal_activation": goal_activation[policy_ended].mean(),
+                            "goal_activation_blue": goal_activation[contexts == 1, :][
+                                policy_ended[contexts == 1, :]
                             ].mean(),
-                            "goal_activation_blue": goal_activation[
-                                contexts == 1, :
-                            ][policy_ended[contexts == 1, :]].mean(),
-                            "goal_activation_red": goal_activation[
-                                contexts == 2, :
-                            ][policy_ended[contexts == 2, :]].mean(),
-                            "goal_activation_green": goal_activation[
-                                contexts == 3, :
-                            ][policy_ended[contexts == 3, :]].mean(),
+                            "goal_activation_red": goal_activation[contexts == 2, :][
+                                policy_ended[contexts == 2, :]
+                            ].mean(),
+                            "goal_activation_green": goal_activation[contexts == 3, :][
+                                policy_ended[contexts == 3, :]
+                            ].mean(),
                             "touch_freq": touch_freq,
                         },
                         step=epoch,
@@ -1059,8 +963,8 @@ class Main:
                 epoch_dir = f"{storage_dir}/{epoch:06d}"
                 os.makedirs(epoch_dir, exist_ok=True)
                 np.save(f"{epoch_dir}/main.dump", [self], allow_pickle=True)
+
                 self.diagnose()
-                self.evaluation_episodes(epoch=epoch)
 
                 time_elapsed = time.perf_counter() - epoch_start
                 print("---- TIME: %10.4f" % time_elapsed, flush=True)
@@ -1093,13 +997,9 @@ class Main:
         epoch_start = time.perf_counter()
         contexts = (np.arange(self.params.batch_size) % 3) + 1
         gen = cycle(
-            chain.from_iterable(
-                repeat(x, 3) for x in range(len(self.obj_params_space))
-            )
+            chain.from_iterable(repeat(x, 3) for x in range(len(self.obj_params_space)))
         )
-        params_ind = np.array(
-            [next(gen) for _ in range(self.params.batch_size)]
-        )
+        params_ind = np.array([next(gen) for _ in range(self.params.batch_size)])
 
         self.controller_par = SMController(
             self.params,
@@ -1186,15 +1086,15 @@ class Main:
                 states_par[episode] = env.reset()
                 envs_par[episode] = env
                 state_par = states_par[episode]
-                self.controller_par.model_data["batch_v"][episode, 0, :] = (
-                    state_par["VISUAL_SENSORS"].ravel()
-                )
-                self.controller_par.model_data["batch_ss"][episode, 0, :] = (
-                    state_par["TOUCH_SENSORS"]
-                )
-                self.controller_par.model_data["batch_p"][episode, 0, :] = (
-                    state_par["JOINT_POSITIONS"][:5]
-                )
+                self.controller_par.model_data["batch_v"][episode, 0, :] = state_par[
+                    "VISUAL_SENSORS"
+                ].ravel()
+                self.controller_par.model_data["batch_ss"][episode, 0, :] = state_par[
+                    "TOUCH_SENSORS"
+                ]
+                self.controller_par.model_data["batch_p"][episode, 0, :] = state_par[
+                    "JOINT_POSITIONS"
+                ][:5]
 
             (
                 matches_par,
@@ -1213,14 +1113,10 @@ class Main:
 
             # Episode success rate: in how many episodes policy ever changes?
             episode_success_rate = (policy_changed.sum(axis=1) >= 2).mean()
-            episode_success_rate_par = (
-                policy_changed_par.sum(axis=1) >= 2
-            ).mean()
+            episode_success_rate_par = (policy_changed_par.sum(axis=1) >= 2).mean()
 
             # How many timesteps involve touching the object?
-            touch_freq = (
-                self.controller.model_data["batch_ss"].sum(axis=-1) > 0
-            ).mean()
+            touch_freq = (self.controller.model_data["batch_ss"].sum(axis=-1) > 0).mean()
             touch_freq_par = (
                 self.controller_par.model_data["batch_ss"].sum(axis=-1) > 0
             ).mean()
@@ -1232,9 +1128,7 @@ class Main:
             # Initial policy change does not count
             policy_ended[
                 :,
-                self.params.drop_first_n_steps
-                + self.params.policy_selection_steps
-                - 1,
+                self.params.drop_first_n_steps + self.params.policy_selection_steps - 1,
             ] = 0
 
             policy_ended_par = np.zeros(policy_changed_par.shape, dtype=bool)
@@ -1243,9 +1137,7 @@ class Main:
             # Initial policy change does not count
             policy_ended_par[
                 :,
-                self.params.drop_first_n_steps
-                + self.params.policy_selection_steps
-                - 1,
+                self.params.drop_first_n_steps + self.params.policy_selection_steps - 1,
             ] = 0
 
             # # Calculate within-episode match increase
@@ -1298,9 +1190,7 @@ class Main:
 
             bsize = self.params.batch_size * self.params.stime
             local_incompetences = local_incompetences.reshape((bsize, -1))
-            local_incompetences_par = local_incompetences_par.reshape(
-                (bsize, -1)
-            )
+            local_incompetences_par = local_incompetences_par.reshape((bsize, -1))
 
             def modulate_param(base, limit, prop):
                 return base + (limit - base) * prop
@@ -1369,9 +1259,7 @@ class Main:
             (update_items, update_episodes, curr_loss, mean_modulation) = (
                 controller.update(
                     self.controller.model_data["batch_v"].reshape((bsize, -1)),
-                    self.controller.model_data["batch_ss"].reshape(
-                        (bsize, -1)
-                    ),
+                    self.controller.model_data["batch_ss"].reshape((bsize, -1)),
                     self.controller.model_data["batch_p"].reshape((bsize, -1)),
                     self.controller.model_data["batch_a"].reshape((bsize, -1)),
                     self.controller.model_data["batch_g"].reshape((bsize, -1)),
@@ -1392,9 +1280,7 @@ class Main:
                 mean_modulation_par,
             ) = self.controller_par.update(
                 self.controller_par.model_data["batch_v"].reshape((bsize, -1)),
-                self.controller_par.model_data["batch_ss"].reshape(
-                    (bsize, -1)
-                ),
+                self.controller_par.model_data["batch_ss"].reshape((bsize, -1)),
                 self.controller_par.model_data["batch_p"].reshape((bsize, -1)),
                 self.controller_par.model_data["batch_a"].reshape((bsize, -1)),
                 self.controller_par.model_data["batch_g"].reshape((bsize, -1)),
@@ -1408,50 +1294,26 @@ class Main:
             )
 
             # Store trajectory data
-            mvpm = self.controller.model_data["match_value_per_mod"].reshape(
-                -1, 4
-            )
+            mvpm = self.controller.model_data["match_value_per_mod"].reshape(-1, 4)
             internal_trajectory_data.append(
                 {
-                    "epoch": [epoch]
-                    * self.params.batch_size
-                    * self.params.stime,
+                    "epoch": [epoch] * self.params.batch_size * self.params.stime,
                     "episode": [
                         i
                         for i in range(self.params.batch_size)
                         for _ in range(self.params.stime)
                     ],
-                    "context": [
-                        c for c in contexts for _ in range(self.params.stime)
-                    ],
-                    "timestep": list(range(self.params.stime))
-                    * self.params.batch_size,
-                    "v_p": self.controller.model_data["v_p"].reshape((-1, 2))[
-                        :, 0
-                    ]
-                    * 10
+                    "context": [c for c in contexts for _ in range(self.params.stime)],
+                    "timestep": list(range(self.params.stime)) * self.params.batch_size,
+                    "v_p": self.controller.model_data["v_p"].reshape((-1, 2))[:, 0] * 10
                     + self.controller.model_data["v_p"].reshape((-1, 2))[:, 1],
-                    "ss_p": self.controller.model_data["ss_p"].reshape(
-                        (-1, 2)
-                    )[:, 0]
-                    * 10
-                    + self.controller.model_data["ss_p"].reshape((-1, 2))[
-                        :, 1
-                    ],
-                    "p_p": self.controller.model_data["p_p"].reshape((-1, 2))[
-                        :, 0
-                    ]
-                    * 10
+                    "ss_p": self.controller.model_data["ss_p"].reshape((-1, 2))[:, 0] * 10
+                    + self.controller.model_data["ss_p"].reshape((-1, 2))[:, 1],
+                    "p_p": self.controller.model_data["p_p"].reshape((-1, 2))[:, 0] * 10
                     + self.controller.model_data["p_p"].reshape((-1, 2))[:, 1],
-                    "a_p": self.controller.model_data["a_p"].reshape((-1, 2))[
-                        :, 0
-                    ]
-                    * 10
+                    "a_p": self.controller.model_data["a_p"].reshape((-1, 2))[:, 0] * 10
                     + self.controller.model_data["a_p"].reshape((-1, 2))[:, 1],
-                    "g_p": self.controller.model_data["g_p"].reshape((-1, 2))[
-                        :, 0
-                    ]
-                    * 10
+                    "g_p": self.controller.model_data["g_p"].reshape((-1, 2))[:, 0] * 10
                     + self.controller.model_data["g_p"].reshape((-1, 2))[:, 1],
                     "match_value_v": mvpm[:, 0].copy(),
                     "match_value_ss": mvpm[:, 1].copy(),
@@ -1462,59 +1324,34 @@ class Main:
             )
 
             # Store trajectory data
-            mvpm_par = self.controller_par.model_data[
-                "match_value_per_mod"
-            ].reshape(-1, 4)
+            mvpm_par = self.controller_par.model_data["match_value_per_mod"].reshape(
+                -1, 4
+            )
             internal_trajectory_data_par.append(
                 {
-                    "epoch": [epoch]
-                    * self.params.batch_size
-                    * self.params.stime,
+                    "epoch": [epoch] * self.params.batch_size * self.params.stime,
                     "episode": [
                         i
                         for i in range(self.params.batch_size)
                         for _ in range(self.params.stime)
                     ],
-                    "context": [
-                        c for c in contexts for _ in range(self.params.stime)
-                    ],
-                    "timestep": list(range(self.params.stime))
-                    * self.params.batch_size,
-                    "v_p": self.controller_par.model_data["v_p"].reshape(
-                        (-1, 2)
-                    )[:, 0]
+                    "context": [c for c in contexts for _ in range(self.params.stime)],
+                    "timestep": list(range(self.params.stime)) * self.params.batch_size,
+                    "v_p": self.controller_par.model_data["v_p"].reshape((-1, 2))[:, 0]
                     * 10
-                    + self.controller_par.model_data["v_p"].reshape((-1, 2))[
-                        :, 1
-                    ],
-                    "ss_p": self.controller_par.model_data["ss_p"].reshape(
-                        (-1, 2)
-                    )[:, 0]
+                    + self.controller_par.model_data["v_p"].reshape((-1, 2))[:, 1],
+                    "ss_p": self.controller_par.model_data["ss_p"].reshape((-1, 2))[:, 0]
                     * 10
-                    + self.controller_par.model_data["ss_p"].reshape((-1, 2))[
-                        :, 1
-                    ],
-                    "p_p": self.controller_par.model_data["p_p"].reshape(
-                        (-1, 2)
-                    )[:, 0]
+                    + self.controller_par.model_data["ss_p"].reshape((-1, 2))[:, 1],
+                    "p_p": self.controller_par.model_data["p_p"].reshape((-1, 2))[:, 0]
                     * 10
-                    + self.controller_par.model_data["p_p"].reshape((-1, 2))[
-                        :, 1
-                    ],
-                    "a_p": self.controller_par.model_data["a_p"].reshape(
-                        (-1, 2)
-                    )[:, 0]
+                    + self.controller_par.model_data["p_p"].reshape((-1, 2))[:, 1],
+                    "a_p": self.controller_par.model_data["a_p"].reshape((-1, 2))[:, 0]
                     * 10
-                    + self.controller_par.model_data["a_p"].reshape((-1, 2))[
-                        :, 1
-                    ],
-                    "g_p": self.controller_par.model_data["g_p"].reshape(
-                        (-1, 2)
-                    )[:, 0]
+                    + self.controller_par.model_data["a_p"].reshape((-1, 2))[:, 1],
+                    "g_p": self.controller_par.model_data["g_p"].reshape((-1, 2))[:, 0]
                     * 10
-                    + self.controller_par.model_data["g_p"].reshape((-1, 2))[
-                        :, 1
-                    ],
+                    + self.controller_par.model_data["g_p"].reshape((-1, 2))[:, 1],
                     "match_value_v": mvpm_par[:, 0].copy(),
                     "match_value_ss": mvpm_par[:, 1].copy(),
                     "match_value_p": mvpm_par[:, 2].copy(),
@@ -1547,29 +1384,17 @@ class Main:
                 self.controller.model_data["batch_log"][policy_ended].max(),
             ]
             logs_par[epoch] = [
-                self.controller_par.model_data["batch_log"][
-                    policy_ended_par
-                ].min(),
-                self.controller_par.model_data["batch_log"][
-                    policy_ended_par
-                ].mean(),
-                self.controller_par.model_data["batch_log"][
-                    policy_ended_par
-                ].max(),
+                self.controller_par.model_data["batch_log"][policy_ended_par].min(),
+                self.controller_par.model_data["batch_log"][policy_ended_par].mean(),
+                self.controller_par.model_data["batch_log"][policy_ended_par].max(),
             ]
 
             print(
                 ("%8.7f " * 3)
                 % (
-                    self.controller.model_data["batch_log"][
-                        policy_ended
-                    ].min(),
-                    self.controller.model_data["batch_log"][
-                        policy_ended
-                    ].mean(),
-                    self.controller.model_data["batch_log"][
-                        policy_ended
-                    ].max(),
+                    self.controller.model_data["batch_log"][policy_ended].min(),
+                    self.controller.model_data["batch_log"][policy_ended].mean(),
+                    self.controller.model_data["batch_log"][policy_ended].max(),
                 ),
                 end="",
             )
@@ -1632,9 +1457,7 @@ class Main:
                             "stm_a_loss_par": curr_loss_par[3],
                             "mean_sigma_par": local_sigma_par.mean(),
                             "mean_lr_par": local_lr_par.mean(),
-                            "mean_cum_match_par": cum_match_par[
-                                policy_ended_par
-                            ].mean()
+                            "mean_cum_match_par": cum_match_par[policy_ended_par].mean()
                             / self.params.cum_match_stop_th,
                             "grid_comp_mean_par": global_competence_par,
                             "episode_success_rate_par": episode_success_rate_par,
@@ -1644,36 +1467,26 @@ class Main:
                             ).mean(),
                             "match_value_v_par": self.controller_par.model_data[
                                 "match_value_per_mod"
-                            ][
-                                matches_par, 0
-                            ].mean(),
+                            ][matches_par, 0].mean(),
                             "match_value_ss_par": self.controller_par.model_data[
                                 "match_value_per_mod"
-                            ][
-                                matches_par, 1
-                            ].mean(),
+                            ][matches_par, 1].mean(),
                             "match_value_p_par": self.controller_par.model_data[
                                 "match_value_per_mod"
-                            ][
-                                matches_par, 2
-                            ].mean(),
+                            ][matches_par, 2].mean(),
                             "match_value_a_par": self.controller_par.model_data[
                                 "match_value_per_mod"
-                            ][
-                                matches_par, 3
+                            ][matches_par, 3].mean(),
+                            "goal_activation": goal_activation[policy_ended].mean(),
+                            "goal_activation_blue": goal_activation[contexts == 1, :][
+                                policy_ended[contexts == 1, :]
                             ].mean(),
-                            "goal_activation": goal_activation[
-                                policy_ended
+                            "goal_activation_red": goal_activation[contexts == 2, :][
+                                policy_ended[contexts == 2, :]
                             ].mean(),
-                            "goal_activation_blue": goal_activation[
-                                contexts == 1, :
-                            ][policy_ended[contexts == 1, :]].mean(),
-                            "goal_activation_red": goal_activation[
-                                contexts == 2, :
-                            ][policy_ended[contexts == 2, :]].mean(),
-                            "goal_activation_green": goal_activation[
-                                contexts == 3, :
-                            ][policy_ended[contexts == 3, :]].mean(),
+                            "goal_activation_green": goal_activation[contexts == 3, :][
+                                policy_ended[contexts == 3, :]
+                            ].mean(),
                             "goal_activation_par": goal_activation_par[
                                 policy_ended_par
                             ].mean(),
@@ -1691,7 +1504,7 @@ class Main:
                         step=epoch,
                     )
 
-            # diagnose
+            # PARASITE EVALUATION
             if (epoch % self.params.epochs_to_test == 0) or epoch == (
                 self.params.epochs - 1
             ):
@@ -1699,33 +1512,16 @@ class Main:
                 epoch_dir = f"{storage_dir}/{epoch:06d}"
                 os.makedirs(epoch_dir, exist_ok=True)
                 np.save(f"{epoch_dir}/main.dump", [self], allow_pickle=True)
-                self.diagnose()
-                self.evaluation_episodes(epoch=epoch)
+
+                self.diagnose(controller=self.controller_par, suffix="_par")
 
                 time_elapsed = time.perf_counter() - epoch_start
                 print("---- TIME: %10.4f" % time_elapsed, flush=True)
                 epoch_start = time.perf_counter()
 
-                self.evaluation_episodes(
-                    orig_controller=self.controller_par,
-                    epoch=epoch,
-                    suffix="_par",
-                )
-
                 self.controller_par.save(epoch, tag="parasite")
                 visual_map(wfile=f"{site_dir}/visual_weights-parasite.npy")
                 comp_map(wfile=f"{site_dir}/comp_grid-parasite.npy")
-
-                if self.plots and os.path.isfile("PLOT_SIMS"):
-                    print("----> Test Sims ...", end=" ", flush=True)
-                    self.evaluation_episodes(
-                        epoch=epoch,
-                        n_episodes=self.params.tests,
-                        suffix="_demo_par",
-                        render="offline",
-                        orig_controller=self.controller_par,
-                        save_stats=False,
-                    )
 
                 if use_wandb:
                     log_data = {
@@ -1752,19 +1548,18 @@ class Main:
         )
         df_final_par.to_csv("internal_trajectory_data_parasite.csv")
 
-    def diagnose(self):
+    def diagnose(self, controller=None, suffix=None):
 
         np.save("main.dump", [self], allow_pickle=True)
 
-        controller = self.controller
+        controller = controller or self.controller
+        suffix = suffix or ""
         logs = self.logs
         epoch = self.epoch
 
         data = {}
         data["match_value"] = self.controller.model_data["match_value"]
-        data["match_value_per_mod"] = self.controller.model_data[
-            "match_value_per_mod"
-        ]
+        data["match_value_per_mod"] = self.controller.model_data["match_value_per_mod"]
         data["v_r"] = self.controller.model_data["v_r"]
         data["ss_r"] = self.controller.model_data["ss_r"]
         data["p_r"] = self.controller.model_data["p_r"]
@@ -1782,30 +1577,50 @@ class Main:
         np.save(f"{epoch_dir}/data", [data])
         np.save(f"{site_dir}/log", logs[: epoch + 1])
         np.save(f"{epoch_dir}/log", logs[: epoch + 1])
-
         if self.plots is False:
             return
 
         print("----> Graphs  ...", flush=True)
         remove_figs(epoch)
-        visual_map()
         log()
+        visual_map()
         comp_map()
+        somatosensory_map()
+        proprio_map()
 
-        if os.path.isfile("PLOT_SIMS"):
+        if not os.path.exists(epoch_dir):
+            print("----->>>>>>")
+            sys.exit()
+        # Tests
+        gc, tr = self.evaluation_episodes(
+            epoch=epoch,
+            n_episodes=self.params.tests,
+            render=None,
+            save_stats=True,
+            suffix=suffix,
+            orig_controller=controller,
+        )
+
+        tr.to_csv(f"{epoch_dir}/trajectories.csv")
+
+        # Render demos
+        if self.plots:
             print("----> Test Sims ...", end=" ", flush=True)
             self.evaluation_episodes(
                 epoch=epoch,
                 n_episodes=self.params.tests,
                 render="offline",
-                suffix="_demo",
+                suffix="_demo" + suffix,
                 save_stats=False,
+                orig_controller=controller,
             )
 
         if use_wandb:
             log_data = {
                 "visual_map": wandb.Image("www/visual_map.png"),
                 "comp_map": wandb.Image("www/comp_map.png"),
+                "ssensory_map": wandb.Image("www/ssensory_map.png"),
+                "proprio_map": wandb.Image("www/proprio_map.png"),
             }
             wandb.log(log_data, step=epoch)
 
@@ -1826,7 +1641,7 @@ class Main:
         save_stats=True,
         add_goal_suffix=False,
         n_episodes=None,
-        zero_noise=False,
+        zero_noise=True,
     ):
 
         print(f"------> {suffix}")
@@ -1843,9 +1658,7 @@ class Main:
             n_episodes = len(env_states)
 
         gen = cycle(
-            chain.from_iterable(
-                repeat(x, 3) for x in range(len(self.obj_params_space))
-            )
+            chain.from_iterable(repeat(x, 3) for x in range(len(self.obj_params_space)))
         )
         params_ind = np.array([next(gen) for _ in range(n_episodes)])
 
@@ -1885,12 +1698,8 @@ class Main:
             controller.model_data["batch_v"][episode, 0, :] = state[
                 "VISUAL_SENSORS"
             ].ravel()
-            controller.model_data["batch_ss"][episode, 0, :] = state[
-                "TOUCH_SENSORS"
-            ]
-            controller.model_data["batch_p"][episode, 0, :] = state[
-                "JOINT_POSITIONS"
-            ][:5]
+            controller.model_data["batch_ss"][episode, 0, :] = state["TOUCH_SENSORS"]
+            controller.model_data["batch_p"][episode, 0, :] = state["JOINT_POSITIONS"][:5]
 
         # print(pd.Series(contexts).value_counts() / n_episodes)
         # print(pd.Series(params_ind).value_counts() / n_episodes)
@@ -1944,18 +1753,14 @@ class Main:
                 "match_value",
                 "match_value_per_mod",
             ]:
-                controller_.model_data[key][i : (i + bsize)] = (
-                    controller.model_data[key]
-                )
+                controller_.model_data[key][i : (i + bsize)] = controller.model_data[key]
 
         controller = controller_
 
-        matches = np.concat(collected_res[0])
         max_match = np.concat(collected_res[1])
         cum_match = np.concat(collected_res[2])
         episodes_len = np.concat(collected_res[3])
         policy_changed = np.concat(collected_res[4])
-        goal_activation = np.concat(collected_res[5])
 
         goal_counts = defaultdict(int)
         for goal in controller.model_data["g_p"][policy_changed]:
@@ -1963,12 +1768,18 @@ class Main:
 
         all_trajectories = []
         for i in range(n_episodes):
+            i
             # only trajectory of the i-th episode from batch is
             # collected
-            trajectories = pd.DataFrame(
-                controller.model_data["batch_p"][i, :, -2:]
-            )
-            trajectories.columns = ["d1", "d2"]
+            postures = pd.DataFrame(controller.model_data["batch_p"][i, :, :])
+            postures.columns = ["d1", "d2", "d3", "d4", "d5"]
+            postures.loc[:, "index_"] = np.arange(postures.shape[0])
+            ss_sensors = pd.DataFrame(controller.model_data["batch_ss"][i, :, :])
+            ss_sensors.columns = [f"s{x}" for x in range(self.params.somatosensory_size)]
+            ss_sensors.loc[:, "index_"] = np.arange(ss_sensors.shape[0])
+            trajectories = pd.merge(postures, ss_sensors, on="index_")
+            trajectories.drop("index_", axis=1, inplace=True)
+
             trajectories["prototype_x"] = controller.model_data["g_p"][i, :, 0]
             trajectories["prototype_y"] = controller.model_data["g_p"][i, :, 1]
             trajectories["goal_id"] = np.cumsum(policy_changed[i])
@@ -2005,15 +1816,12 @@ class Main:
                 - 1
             )
             trajectories = trajectories.iloc[
-                self.params.drop_first_n_steps
-                + self.params.policy_selection_steps : -1
+                self.params.drop_first_n_steps + self.params.policy_selection_steps : -1
             ]
 
             # TMP: remove empty records (when episode ends prematurely). Should be
             # solved better in the future
-            trajectories.drop(
-                trajectories[trajectories["d1"] == 0].index, inplace=True
-            )
+            trajectories.drop(trajectories[trajectories["d1"] == 0].index, inplace=True)
 
             all_trajectories.append(trajectories)
 
@@ -2024,9 +1832,7 @@ class Main:
         print(f"eval success rate {episode_success_rate}")
 
         # How many timesteps involve touching the object?
-        touch_freq = (
-            controller.model_data["batch_ss"].sum(axis=-1) > 0
-        ).mean()
+        touch_freq = (controller.model_data["batch_ss"].sum(axis=-1) > 0).mean()
 
         # Mark end of each policy
         policy_ended = np.zeros(policy_changed.shape, dtype=np.bool)
@@ -2035,25 +1841,19 @@ class Main:
         # Initial policy change does not count
         policy_ended[
             :,
-            self.params.drop_first_n_steps
-            + self.params.policy_selection_steps
-            - 1,
+            self.params.drop_first_n_steps + self.params.policy_selection_steps - 1,
         ] = 0
 
-        episode_match_inc_p, episode_match_inc_ss = (
-            self.calc_match_inc_within_goal(policy_ended, controller)
+        episode_match_inc_p, episode_match_inc_ss = self.calc_match_inc_within_goal(
+            policy_ended, controller
         )
 
-        mi_metrics = self.calc_mi_metrics(
-            contexts, params_ind, controller, policy_ended
-        )
+        mi_metrics = self.calc_mi_metrics(contexts, params_ind, controller, policy_ended)
 
         if render is not None:
             for i in range(n_episodes):
                 episode_len = episodes_len[i]
-                full_match_value = controller.model_data["match_value"][
-                    i, :episode_len
-                ]
+                full_match_value = controller.model_data["match_value"][i, :episode_len]
                 full_cum_match = (
                     cum_match[i, :episode_len] / self.params.cum_match_stop_th
                 )
@@ -2105,12 +1905,10 @@ class Main:
             log_data = {}
             if save_stats:
                 log_data = {
-                    f"eval_mean_comp{suffix}": controller.model_data[
-                        "batch_log"
-                    ][policy_ended].mean(),
-                    f"eval_mean_cum_match{suffix}": cum_match[
+                    f"eval_mean_comp{suffix}": controller.model_data["batch_log"][
                         policy_ended
-                    ].mean()
+                    ].mean(),
+                    f"eval_mean_cum_match{suffix}": cum_match[policy_ended].mean()
                     / self.params.cum_match_stop_th,
                     f"eval_episode_success_rate{suffix}": episode_success_rate,
                     f"eval_episode_match_inc_ss{suffix}": episode_match_inc_ss,
@@ -2148,9 +1946,7 @@ class Main:
         goals_env_states = defaultdict(list)
 
         def choose_unique_policy(self, v_rt, ss_rt, p_rt, goal_activation, t):
-            ret_val = self.choose_policy_(
-                v_rt, ss_rt, p_rt, goal_activation, t
-            )
+            ret_val = self.choose_policy_(v_rt, ss_rt, p_rt, goal_activation, t)
             if ret_val[0].shape[0] < 1:
                 return ret_val
 
@@ -2160,9 +1956,7 @@ class Main:
             raise RepeatedGoalPrototypeException(f"Goal prototype {goal_p}")
 
         controller.choose_policy_ = controller.choose_policy
-        controller.choose_policy = types.MethodType(
-            choose_unique_policy, controller
-        )
+        controller.choose_policy = types.MethodType(choose_unique_policy, controller)
 
         for i in range(n_trials):
             print(f"montecarlo_trial ---- {i: 4d}/{n_trials} ----")
@@ -2185,18 +1979,12 @@ class Main:
             states = [state]
             contexts = [context]
 
-            controller.model_data["batch_v"][0, 0, :] = state[
-                "VISUAL_SENSORS"
-            ].ravel()
+            controller.model_data["batch_v"][0, 0, :] = state["VISUAL_SENSORS"].ravel()
             controller.model_data["batch_ss"][0, 0, :] = state["TOUCH_SENSORS"]
-            controller.model_data["batch_p"][0, 0, :] = state[
-                "JOINT_POSITIONS"
-            ][:5]
+            controller.model_data["batch_p"][0, 0, :] = state["JOINT_POSITIONS"][:5]
 
             # Use minimal sigma for building internal representations
-            controller.updateParams(
-                self.params.base_internal_sigma, controller.curr_lr
-            )
+            controller.updateParams(self.params.base_internal_sigma, controller.curr_lr)
 
             # get Representations for initial states
             Rs, Rp = controller.spread(
@@ -2270,17 +2058,11 @@ class Main:
             zero_noise=True
         )
 
-        action_onset = (
-            self.params.drop_first_n_steps + self.params.policy_selection_steps
-        )
+        action_onset = self.params.drop_first_n_steps + self.params.policy_selection_steps
 
         first_goal_counts = defaultdict(int)
-        for _, row in trajectories[
-            trajectories.index == action_onset
-        ].iterrows():
-            first_goal_counts[
-                (int(row["prototype_x"]), int(row["prototype_y"]))
-            ] += 1
+        for _, row in trajectories[trajectories.index == action_onset].iterrows():
+            first_goal_counts[(int(row["prototype_x"]), int(row["prototype_y"]))] += 1
 
         goal_frequency_map(first_goal_counts)
         shutil.copyfile(
@@ -2310,9 +2092,7 @@ class Main:
                 "all_goal_frequency_map": wandb.Image(
                     f"{site_dir}/all_goal_frequency_map.png"
                 ),
-                "trajectory_plots": wandb.Image(
-                    f"{site_dir}/trajectory_plots.png"
-                ),
+                "trajectory_plots": wandb.Image(f"{site_dir}/trajectory_plots.png"),
             }
             wandb.log(log_data, step=epoch)
 
@@ -2358,10 +2138,7 @@ class Main:
         # Find best state for goal
         groups = ["prototype_x", "prototype_y", "state"]
         state_freqs = (
-            trajectories.query("ts == 0")
-            .groupby(groups)
-            .size()
-            .reset_index(name="count")
+            trajectories.query("ts == 0").groupby(groups).size().reset_index(name="count")
         )
 
         groups = ["prototype_x", "prototype_y"]
@@ -2392,14 +2169,10 @@ class Main:
             groups = ["tr_id"]
             for counter, (idx1, data1) in enumerate(data.groupby(groups)):
                 if counter == 0:
-                    tr_idx = prototype_trajectories.tr_id == (
-                        data1.tr_id.iloc[0]
-                    )
+                    tr_idx = prototype_trajectories.tr_id == (data1.tr_id.iloc[0])
                     prototype_trajectories.loc[tr_idx, "best_tr"] = True
 
-        prototype_trajectories = prototype_trajectories.query(
-            "best_tr == True"
-        )
+        prototype_trajectories = prototype_trajectories.query("best_tr == True")
 
         prototype_trajectories.to_csv(f"{site_dir}/prototype_trajectories.csv")
 
@@ -2421,14 +2194,12 @@ class Main:
                 "seed": 0,
             }
 
+            # render demo for single prototype
             self.evaluation_episodes(
                 epoch=0,
                 env_states=[state],
                 render=render,
-                suffix=(
-                    f"_{head.prototype_x:03.0f}_"
-                    f"{head.prototype_y:03.0f}_demo"
-                ),
+                suffix=(f"_{head.prototype_x:03.0f}_" f"{head.prototype_y:03.0f}_demo"),
                 save_stats=False,
                 add_goal_suffix=False,
                 n_episodes=1,
@@ -2456,9 +2227,7 @@ class Main:
                 "all_goal_frequency_map": wandb.Image(
                     f"{site_dir}/all_goal_frequency_map.png"
                 ),
-                "trajectory_plots": wandb.Image(
-                    f"{site_dir}/trajectory_plots.png"
-                ),
+                "trajectory_plots": wandb.Image(f"{site_dir}/trajectory_plots.png"),
             }
             wandb.log(log_data, step=epoch)
 
@@ -2473,22 +2242,25 @@ def parse_arguments():
         default=1e99,
     )
     parser.add_argument("-g", "--gpu", help="Use gpu", action="store_true")
-    parser.add_argument(
-        "-s", "--seed", help="Simulation seed", action="store", default=1
-    )
+    parser.add_argument("-s", "--seed", help="Simulation seed", action="store", default=1)
     parser.add_argument(
         "-w",
         "--wandb",
         help="Store simulations results to Weights" " and Biases",
         action="store_true",
     )
-    parser.add_argument(
-        "-x", "--plots", help="Plot graphs", action="store_true"
-    )
+    parser.add_argument("-x", "--plots", help="Plot graphs", action="store_true")
     parser.add_argument(
         "-n",
         "--name",
         help="Simulation name (to store results in" " named folders)",
+        action="store",
+        default=None,
+    )
+    parser.add_argument(
+        "-d",
+        "--dir",
+        help="Simulation simulation_directory",
         action="store",
         default=None,
     )
@@ -2523,9 +2295,7 @@ def parse_arguments():
         action="store",
         default=None,
     )
-    parser.add_argument(
-        "--demo", help="Generate demo episodes", action="store_true"
-    )
+    parser.add_argument("--demo", help="Generate demo episodes", action="store_true")
     parser.add_argument(
         "--render", help="Render generated demo episodes", action="store_true"
     )
@@ -2533,8 +2303,7 @@ def parse_arguments():
         "-o",
         "--opt",
         nargs=1,
-        help="Additional simulation option"
-        " in KEY=VALUE format (overrides params.py)",
+        help="Additional simulation option" " in KEY=VALUE format (overrides params.py)",
         action=AppendParamsAction,
         metavar="KEY=VALUE",
     )
@@ -2568,6 +2337,7 @@ if __name__ == "__main__":
     demo = bool(args.demo)
     render = bool(args.render)
     simulation_name = args.name
+    simulation_dir = args.dir or simulation_name
     wdb_project = args.wdb_project
     wdb_entity = args.wdb_entity
 
@@ -2579,7 +2349,7 @@ if __name__ == "__main__":
     torch.set_default_device(device)
 
     if args.name is not None:
-        named_dir = (Path(simulations_dir) / args.name).resolve()
+        named_dir = (Path(simulations_dir) / simulation_dir).resolve()
         os.makedirs(named_dir, exist_ok=True)
         os.chdir(named_dir)
         if plots:
@@ -2589,16 +2359,14 @@ if __name__ == "__main__":
 
     print(AppendParamsAction.params_string)
     params.update(AppendParamsAction.params_string)
-    print(params)
+    print(f"Updated params: {params}")
 
     if use_wandb:
-        config = {
-            k: v for k, v in vars(params).items() if not k.startswith("_")
-        }
+        config = {k: v for k, v in vars(params).items() if not k.startswith("_")}
         run = wandb.init(
             project=wdb_project or "kickstarting_concept",
             entity=wdb_entity or "hill_uw",
-            name=args.name,
+            name=simulation_name,
             group=args.group if args.group else None,
             config=config,
         )

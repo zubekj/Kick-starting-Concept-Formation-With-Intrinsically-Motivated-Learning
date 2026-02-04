@@ -66,6 +66,8 @@ class ParameterManager:
             param_dict = json.loads(params)
         except ValueError as e:
             print(f"Error decoding JSON: {e}")
+            print(f"    initial_string: {param_string}")
+            print(f"    dict: {params}")
             sys.exit(1)
 
         return param_dict

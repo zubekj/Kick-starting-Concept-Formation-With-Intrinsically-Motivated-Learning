@@ -20,8 +20,9 @@ def flt(n, s=0.1):
 
 
 class SMController:
-    def __init__(self, params, rng=None, load=False, shuffle=False, tag=None):
+    def __init__(self, params, sm, rng=None, load=False, shuffle=False, tag=None):
 
+        self.sm = sm
         self.params = params
         self.maxmatch = None
         self.rng = rng
@@ -275,29 +276,13 @@ class SMController:
             matches_increments_per_mod,
         )
 
-    def choose_policy(self, v_rt, ss_rt, p_rt, goal_activation, t):
-        # TODO: ugly hack to avoid division by 0
-        # v_rt_w = 1.1 - self.controller.predict.spread(v_rt)
-        # ss_rt_w = 1.1 - self.controller.predict.spread(ss_rt)
-        # p_rt_w = 1.1 - self.controller.predict.spread(p_rt)
-        v_rt_w = self.predict.spread(v_rt)
-        # ss_rt_w = self.predict.spread(ss_rt)
-        # p_rt_w = self.predict.spread(p_rt)
+    def choose_policy(self, v_pt, v_rt, ss_rt, p_rt, goal_activation, t):
 
+        v_rt_w = self.predict.spread(v_rt)
         v_rt_w_sum = v_rt_w.sum(axis=1)
         v_rt = (v_rt * v_rt_w).sum(axis=1) / np.where(v_rt_w_sum != 0, v_rt_w_sum, 1)
-        # ss_rt = (ss_rt * ss_rt_w).sum(axis=1) / ss_rt_w.sum(axis=1)
-        # p_rt = (p_rt * p_rt_w).sum(axis=1) / p_rt_w.sum(axis=1)
-
-        # goals = np.average([v_rt, ss_rt, p_rt],
-        #                   axis=0,
-        #                   weights=[self.params.modalities_weights[0],
-        #                            self.params.modalities_weights[1],
-        #                            self.params.modalities_weights[2]])
-        # goals = (v_rt + ss_rt + p_rt) / 3 # TEST
-        # goals_out = (v_rt + p_rt) / 2 # TEST: no touch modality
         goals_out = v_rt  # TEST: Visual modality only
-
+        #
         goals_p, goals = self.stm_a.get_point_and_representation(
             goals_out, sigma=self.params.representation_sigma
         )
@@ -442,7 +427,6 @@ class SMController:
     def __setstate__(self, state):
         params = Parameters()
         params.__setstate__(state["params"])
-        self.__init__(params)
         self.stm_v.set_weights(state["visual"])
         self.stm_ss.set_weights(state["ssensory"])
         self.stm_p.set_weights(state["proprio"])
@@ -454,11 +438,6 @@ class SMController:
     def save(self, epoch, tag=None):
 
         suffix = "" if tag is None else f"-{tag}"
-        storage_dir = f"storage{suffix}"
-        epoch_dir = f"{storage_dir}/{epoch:06d}"
-        site_dir = "www"
-        os.makedirs(storage_dir, exist_ok=True)
-        os.makedirs(epoch_dir, exist_ok=True)
 
         weights = {
             "visual": self.stm_v.get_weights(),
@@ -469,18 +448,17 @@ class SMController:
         }
 
         np.save(
-            f"{epoch_dir}/weights",
+            f"{self.sm.epoch_dir}/weights",
             [weights],
             allow_pickle=True,
         )
 
         np.save(
-            f"{site_dir}/weights",
+            f"{self.sm.site_dir}/weights",
             [weights],
             allow_pickle=True,
         )
-
-        np.save(f"{site_dir}/comp_grid{suffix}", self.comp_grid)
+        np.save(self.sm.site_dir / f"comp_grid{suffix}", self.comp_grid)
 
     def load(
         self,

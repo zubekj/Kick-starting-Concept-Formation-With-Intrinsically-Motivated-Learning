@@ -7,16 +7,21 @@ An organizing map gtmp whose topology can be guided by a teaching signal.
 Generalizes SOMs.
 """
 
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
+
 
 def is_2d(func):
     func.type = "2d"
     return func
 
+
 def is_1d(func):
     func.type = "1d"
     return func
+
 
 @is_1d
 def radial(mean, sigma, size):
@@ -32,8 +37,9 @@ def radial(mean, sigma, size):
 
     x = torch.arange(size, dtype=torch.float)
     diff = x.view(1, -1) - mean.view(-1, 1)
-    radial_basis = torch.exp(-0.5 * (sigma ** -2) * (diff ** 2))
+    radial_basis = torch.exp(-0.5 * (sigma**-2) * (diff**2))
     return radial_basis
+
 
 @is_2d
 def radial2d(mean, sigma, size):
@@ -65,9 +71,10 @@ def radial2d(mean, sigma, size):
     """
     grid_points = make_grid(np.sqrt(size))
     diff = grid_points.unsqueeze(0) - mean.unsqueeze(1)
-    radial_basis = torch.exp(-0.5 * (sigma ** -2) * torch.norm(diff, dim=-1) **2)
+    radial_basis = torch.exp(-0.5 * (sigma**-2) * torch.norm(diff, dim=-1) ** 2)
 
     return radial_basis
+
 
 def make_grid(side):
     """Creates a grid of points in 2D space."""
@@ -114,8 +121,9 @@ class STM(torch.nn.Module):
         self.external_radials = None
         self.external_radial_prop = external_radial_prop
 
-        self.kernel = torch.nn.Parameter(torch.zeros(input_size, output_size),
-                                         requires_grad=True)
+        self.kernel = torch.nn.Parameter(
+            torch.zeros(input_size, output_size), requires_grad=True
+        )
         torch.nn.init.xavier_normal_(self.kernel, gain=weights_init_sigma)
 
     def forward(self, x):
@@ -141,16 +149,17 @@ class STM(torch.nn.Module):
         self.internal_radials = radials
 
         if self.external_radials is not None:
-            radials = (1 - self.external_radial_prop)*radials + \
-                    self.external_radial_prop*self.external_radials
+            radials = (
+                1 - self.external_radial_prop
+            ) * radials + self.external_radial_prop * self.external_radials
 
         return norms2, radials
 
     def backward(self, radials):
         radials = radials / (radials.sum(dim=1).reshape(-1, 1) + 1e-5)
-    
-        #CHANGE: Use single prototype instead of weighted average.
-        #x = torch.matmul(radials, self.kernel.T)
+
+        # CHANGE: Use single prototype instead of weighted average.
+        # x = torch.matmul(radials, self.kernel.T)
         x = self.kernel.T[radials.argmax(dim=-1)]
 
         return x
@@ -176,17 +185,30 @@ class SMSTM(STM):
     ):
         super(SMSTM, self).__init__(**kwargs)
         self.lr = learning_rate
+        self.modulate = 1.0
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
     def spread(self, x):
-        return super(SMSTM, self).spread(torch.tensor(x, dtype=torch.float)).cpu().detach().numpy()
+        return (
+            super(SMSTM, self)
+            .spread(torch.tensor(x, dtype=torch.float))
+            .cpu()
+            .detach()
+            .numpy()
+        )
 
     def get_activation(self, x):
         activation = super(SMSTM, self).forward(torch.tensor(x, dtype=torch.float))
         return activation.cpu().detach().numpy()
 
     def backward(self, x):
-        return super(SMSTM, self).backward(torch.tensor(x, dtype=torch.float)).cpu().detach().numpy()
+        return (
+            super(SMSTM, self)
+            .backward(torch.tensor(x, dtype=torch.float))
+            .cpu()
+            .detach()
+            .numpy()
+        )
 
     def get_point_and_representation(self, out, sigma=None):
         out = torch.tensor(out, dtype=torch.float)
@@ -200,7 +222,7 @@ class SMSTM(STM):
         radials = self.radial_fun(point, sigma, self.output_size)
         radials = radials / (sigma * np.sqrt(np.pi * 2))
         radials = radials / (torch.sum(radials, dim=1).reshape(-1, 1) + 1e-5)
-        
+
         return point.cpu().numpy(), radials.cpu().numpy()
 
     def getRepresentation(self, point, sigma=None):
@@ -211,15 +233,14 @@ class SMSTM(STM):
         radials = self.radial_fun(point, sigma, self.output_size)
         radials = radials / (sigma * np.sqrt(np.pi * 2))
         radials = radials / (torch.sum(radials, dim=1).reshape(-1, 1) + 1e-5)
-        
+
         return radials.cpu().numpy()
 
     def update_params(self, sigma=None, lr=None):
         if sigma is not None:
             self.sigma = torch.tensor(sigma)
         if lr is not None:
-            self.lr = lr
-            self.optimizer.param_groups[0]['lr'] = lr
+            self.modulate = lr
 
     def update(self, data, dists):
         assert len(data.shape) == 2
@@ -228,7 +249,7 @@ class SMSTM(STM):
         dists = torch.tensor(dists, dtype=torch.float)
         self.optimizer.zero_grad()
         out = self(data)
-        loss = self.loss(out, dists)
+        loss = self.loss(out, dists) * self.modulate
         loss.backward()
         self.optimizer.step()
         return loss
@@ -263,7 +284,7 @@ if __name__ == "__main__":
 
         # update learning rate and sigma in the graph
         som_layer.sigma = curr_sigma
-        optimizer.param_groups[0]['lr'] = curr_rl
+        optimizer.param_groups[0]["lr"] = curr_rl
         optimizer.zero_grad()
 
         data = torch.tensor(np.random.uniform(0, 1, [100, 2]))
@@ -273,15 +294,10 @@ if __name__ == "__main__":
 
         optimizer.step()
         if t % (stime // 10) == 0:
-            print(
-                loss_.detach().numpy(), curr_sigma, curr_rl
-            )
+            print(loss_.detach().numpy(), curr_sigma, curr_rl)
         loss.append(loss_)
 
-    import matplotlib
-
     matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
 
     weights = som_layer.kernel.detach().numpy()
     plt.scatter(*weights)

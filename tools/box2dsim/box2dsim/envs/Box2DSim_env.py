@@ -49,7 +49,7 @@ class Box2DSimOneArmEnv(gym.Env):
     ]
     sensors_names = [f"s{x}" for x in range(1, 41)]
 
-    def __init__(self, rand_obj_params=None):
+    def __init__(self, rand_obj_params=None, render_params=None):
 
         super(Box2DSimOneArmEnv, self).__init__()
 
@@ -67,9 +67,7 @@ class Box2DSimOneArmEnv(gym.Env):
         # Define action and observation space
         # They must be gym.spaces objects
         # Example when using discrete actions:
-        self.action_space = spaces.Box(
-            -np.pi, np.pi, [self.num_joints], dtype=float
-        )
+        self.action_space = spaces.Box(-np.pi, np.pi, [self.num_joints], dtype=float)
 
         self.observation_space = gym.spaces.Dict(
             {
@@ -103,14 +101,19 @@ class Box2DSimOneArmEnv(gym.Env):
 
         self.world_id = None
 
-        if rand_obj_params is None:
-            self.rand_obj_params = {
-                "stretch_conditions": [1, 1.5, 2],
-                "rotation_conditions": np.pi * np.array([0, 0.25, 0.5]),
-                "pos": [4, 2],
-            }
-        else:
-            self.rand_obj_params = rand_obj_params
+        self.render_params = render_params or {
+            "resolution_prop": 1,
+            "duration": 100,
+        }
+
+        self.rand_obj_params = rand_obj_params or {
+            "stretch_conditions": [1, 1.5, 2],
+            "rotation_conditions": np.pi * np.array([0, 0.25, 0.5]),
+            "pos": [4, 2],
+        }
+
+        self.renderer_figsize = np.array([3, 3]) * self.render_params["resolution_prop"]
+        self.duration = self.render_params["duration"]
 
         self.reset()
 
@@ -118,19 +121,13 @@ class Box2DSimOneArmEnv(gym.Env):
         self.renderer_figsize = figsize
 
     def init_worlds(self):
-        self.world_files = [
-            get_resource("box2dsim", "models", "arm_2obj_diff.json")
-        ]
+        self.world_files = [get_resource("box2dsim", "models", "arm_2obj_diff.json")]
         self.worlds = {"arm_2obj_diff": 0}
         self.world_object_names = {0: ["Object1", "Object2"]}
-        self.object_names = self.world_object_names[
-            self.worlds["arm_2obj_diff"]
-        ]
+        self.object_names = self.world_object_names[self.worlds["arm_2obj_diff"]]
 
     def init_map(self):
-        object_map_file = get_resource(
-            "box2dsim", "data", "ObjectPositionsMap.npy"
-        )
+        object_map_file = get_resource("box2dsim", "data", "ObjectPositionsMap.npy")
         self.object_map = np.load(object_map_file).T
 
     def set_seed(self, seed=None):
@@ -150,9 +147,7 @@ class Box2DSimOneArmEnv(gym.Env):
         assert len(action) == self.num_joints
         action = np.hstack(action)
         # do action
-        action[:-2] = np.maximum(
-            -np.pi * 0.5, np.minimum(np.pi * 0.5, action[:-2])
-        )
+        action[:-2] = np.maximum(-np.pi * 0.5, np.minimum(np.pi * 0.5, action[:-2]))
         action[-1] = np.maximum(0, np.minimum(2 * action[-2], action[-1]))
         action[-2:] = -np.maximum(0, np.minimum(np.pi * 0.5, action[-2:]))
         action = np.hstack((action, -action[-2:]))
@@ -162,9 +157,7 @@ class Box2DSimOneArmEnv(gym.Env):
 
     def get_observation(self):
 
-        joints = np.array(
-            [self.sim.joints[name].angle for name in self.joint_names]
-        )
+        joints = np.array([self.sim.joints[name].angle for name in self.joint_names])
         sensors = np.array(
             [
                 np.sum(
@@ -228,12 +221,12 @@ class Box2DSimOneArmEnv(gym.Env):
                 if world_dict["body"][i]["name"] == bodyName:
                     verts = np.vstack(
                         [
-                            world_dict["body"][i]["fixture"][0]["polygon"][
-                                "vertices"
-                            ]["x"],
-                            world_dict["body"][i]["fixture"][0]["polygon"][
-                                "vertices"
-                            ]["y"],
+                            world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
+                                "x"
+                            ],
+                            world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
+                                "y"
+                            ],
                         ]
                     )
 
@@ -241,18 +234,13 @@ class Box2DSimOneArmEnv(gym.Env):
                     vcentroid = verts.min(-1) + vcentroid / 2
                     verts -= vcentroid.reshape(-1, 1)
 
-                    stretch_conditions = self.rand_obj_params[
-                        "stretch_conditions"
-                    ]
+                    stretch_conditions = self.rand_obj_params["stretch_conditions"]
                     stretch = self.rng.choice(stretch_conditions)
 
                     verts[0, :] *= stretch
                     verts[1, :] /= stretch
 
-
-                    rotation_conditions = self.rand_obj_params[
-                        "rotation_conditions"
-                    ]
+                    rotation_conditions = self.rand_obj_params["rotation_conditions"]
                     rot = self.rng.choice(rotation_conditions)
 
                     verts = np.dot(
@@ -264,12 +252,12 @@ class Box2DSimOneArmEnv(gym.Env):
                     )
 
                     world_dict["body"][i]["fixture"][0]["polygon"]["rot"] = rot
-                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
-                        "x"
-                    ] = verts[0].tolist()
-                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
-                        "y"
-                    ] = verts[1].tolist()
+                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"]["x"] = (
+                        verts[0].tolist()
+                    )
+                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"]["y"] = (
+                        verts[1].tolist()
+                    )
 
                     pos = self.rand_obj_params["pos"]
 
@@ -292,12 +280,12 @@ class Box2DSimOneArmEnv(gym.Env):
                 if world_dict["body"][i]["name"] == bodyName:
                     verts = np.vstack(
                         [
-                            world_dict["body"][i]["fixture"][0]["polygon"][
-                                "vertices"
-                            ]["x"],
-                            world_dict["body"][i]["fixture"][0]["polygon"][
-                                "vertices"
-                            ]["y"],
+                            world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
+                                "x"
+                            ],
+                            world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
+                                "y"
+                            ],
                         ]
                     )
 
@@ -330,12 +318,12 @@ class Box2DSimOneArmEnv(gym.Env):
 
                     verts = np.vstack(
                         [
-                            world_dict["body"][i]["fixture"][0]["polygon"][
-                                "vertices"
-                            ]["x"],
-                            world_dict["body"][i]["fixture"][0]["polygon"][
-                                "vertices"
-                            ]["y"],
+                            world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
+                                "x"
+                            ],
+                            world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
+                                "y"
+                            ],
                         ]
                     )
 
@@ -354,12 +342,12 @@ class Box2DSimOneArmEnv(gym.Env):
                     )
 
                     world_dict["body"][i]["fixture"][0]["polygon"]["rot"] = rot
-                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
-                        "x"
-                    ] = verts[0].tolist()
-                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
-                        "y"
-                    ] = verts[1].tolist()
+                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"]["x"] = (
+                        verts[0].tolist()
+                    )
+                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"]["y"] = (
+                        verts[1].tolist()
+                    )
 
                     pos = [
                         self.rng.uniform(0.25, 0.25),
@@ -383,12 +371,12 @@ class Box2DSimOneArmEnv(gym.Env):
         for bodyName in self.object_names:
             for i in range(len(world_dict["body"])):
                 if world_dict["body"][i]["name"] == bodyName:
-                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
-                        "x"
-                    ] = list(verts[0])
-                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"][
-                        "y"
-                    ] = list(verts[1])
+                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"]["x"] = (
+                        list(verts[0])
+                    )
+                    world_dict["body"][i]["fixture"][0]["polygon"]["vertices"]["y"] = (
+                        list(verts[1])
+                    )
 
                     world_dict["body"][i]["position"]["x"] = pos[0]
                     world_dict["body"][i]["position"]["y"] = pos[1]
@@ -440,6 +428,7 @@ class Box2DSimOneArmEnv(gym.Env):
                 xlim=self.taskspace_xlim,
                 ylim=self.taskspace_ylim,
                 offline=False,
+                speed=self.duration,
                 figsize=self.renderer_figsize,
             )
         elif mode == "offline":
@@ -448,6 +437,7 @@ class Box2DSimOneArmEnv(gym.Env):
                 xlim=self.taskspace_xlim,
                 ylim=self.taskspace_ylim,
                 offline=True,
+                speed=self.duration,
                 figsize=self.renderer_figsize,
             )
         else:
@@ -457,13 +447,9 @@ class Box2DSimOneArmEnv(gym.Env):
         if (
             mode is None
             or (
-                mode == "offline"
-                and (self.renderer is None or not self.renderer.offline)
+                mode == "offline" and (self.renderer is None or not self.renderer.offline)
             )
-            or (
-                mode == "human"
-                and (self.renderer is None or self.renderer.offline)
-            )
+            or (mode == "human" and (self.renderer is None or self.renderer.offline))
         ):
             self.render_init(mode)
 
@@ -520,9 +506,7 @@ class Box2DSimOneArmOneEyeEnv(Box2DSimOneArmEnv):
 
     def reset(self, *args, **kargs):
         self.t = 0
-        observation = super(Box2DSimOneArmOneEyeEnv, self).reset(
-            *args, **kargs
-        )
+        observation = super(Box2DSimOneArmOneEyeEnv, self).reset(*args, **kargs)
         self.set_taskspace(self.taskspace_xlim, self.taskspace_ylim)
         return observation
 
@@ -570,16 +554,12 @@ class Box2DSimOneArmOneEyeEnv(Box2DSimOneArmEnv):
                 "VISUAL_SALIENCY": gym.spaces.Box(
                     0, np.inf, self.bground.shape, dtype=float
                 ),
-                "SALIENCY_POS": gym.spaces.Box(
-                    -np.inf, np.inf, [2], dtype=float
-                ),
+                "SALIENCY_POS": gym.spaces.Box(-np.inf, np.inf, [2], dtype=float),
                 "EYE_POS": gym.spaces.Box(-np.inf, np.inf, [2], dtype=float),
                 "VISUAL_SENSORS": gym.spaces.Box(
                     0, np.inf, self.fovea.shape + [3], dtype=float
                 ),
-                "OBJ_POSITION": gym.spaces.Box(
-                    -np.inf, np.inf, [2], dtype=float
-                ),
+                "OBJ_POSITION": gym.spaces.Box(-np.inf, np.inf, [2], dtype=float),
             }
         )
 
@@ -625,9 +605,7 @@ class Box2DSimOneArmOneEyeEnv(Box2DSimOneArmEnv):
         sample = self.rng.uniform(0, 1)
         idx = np.argmax(np.diff(csal > sample))
 
-        idcs = np.array(
-            [idx % self.bground_pixel_side, idx // self.bground_pixel_side]
-        )
+        idcs = np.array([idx % self.bground_pixel_side, idx // self.bground_pixel_side])
 
         idcs = idcs + [1.5, 1.5]
 
@@ -641,9 +619,7 @@ class Box2DSimOneArmOneEyeEnv(Box2DSimOneArmEnv):
     def max_visual(self, saliency):
         idx = softmax(saliency[::-1].ravel()).argmax()
 
-        idcs = np.array(
-            [idx % self.bground_pixel_side, idx // self.bground_pixel_side]
-        )
+        idcs = np.array([idx % self.bground_pixel_side, idx // self.bground_pixel_side])
 
         idcs = idcs / self.bground_pixel_side
         pos = idcs * [self.bground_height, self.bground_width] + [
@@ -675,9 +651,7 @@ class Box2DSimOneArmOneEyeEnv(Box2DSimOneArmEnv):
         self.flts.append(np.outer([0, 1, 0], ones))
         self.flts.append(np.outer([0, 0, 1], ones))
 
-        self.flts = np.array(
-            [(flt - np.mean(flt)) / flt.sum() for flt in self.flts]
-        )
+        self.flts = np.array([(flt - np.mean(flt)) / flt.sum() for flt in self.flts])
 
     def handPosInSpace(self):
         hand_pos = np.array(
@@ -700,27 +674,19 @@ class Box2DSimOneArmOneEyeEnv(Box2DSimOneArmEnv):
     def filter(self, img):
 
         arm = np.exp(
-            -0.5
-            * (0.1**-2)
-            * np.linalg.norm(img - [0.7, 0.7, 0.7], axis=-1) ** 2
+            -0.5 * (0.1**-2) * np.linalg.norm(img - [0.7, 0.7, 0.7], axis=-1) ** 2
         )
         img[arm > 0.9] = [1, 1, 1]
         arm = np.exp(
-            -0.5
-            * (0.3**-2)
-            * np.linalg.norm(img - [0.4, 0.4, 0.4], axis=-1) ** 2
+            -0.5 * (0.3**-2) * np.linalg.norm(img - [0.4, 0.4, 0.4], axis=-1) ** 2
         )
         img[arm > 0.3] = [1, 1, 1]
         arm = np.exp(
-            -0.5
-            * (0.3**-2)
-            * np.linalg.norm(img - [0.1, 0.1, 0.1], axis=-1) ** 2
+            -0.5 * (0.3**-2) * np.linalg.norm(img - [0.1, 0.1, 0.1], axis=-1) ** 2
         )
         img[arm > 0.3] = [1, 1, 1]
         img = 1 - np.mean(img, axis=2)
-        sal = np.maximum(
-            0, np.sum([ndimage.convolve(img, flt) for flt in self.flts], 0)
-        )
+        sal = np.maximum(0, np.sum([ndimage.convolve(img, flt) for flt in self.flts], 0))
 
         if self.hand_pos_sal:
 

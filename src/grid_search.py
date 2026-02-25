@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import argparse
 import collections
 import json
@@ -8,10 +9,6 @@ import sys
 from itertools import product
 
 import slugify
-
-
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser("Executes a parameter grid search schedule")
@@ -41,6 +38,12 @@ def parse_arguments():
         required=True,
         type=str,
         help="JSON of combinations parameters",
+    )
+    parser.add_argument(
+        "-x",
+        "--plot",
+        action="store_true",
+        help="Plot rendered demos",
     )
     return parser.parse_args()
 
@@ -79,8 +82,10 @@ for i, p in enumerate(get_combinations(params)):
         if k != "seeds":
             options.append("-o")
             options.append(f"{k}={v}")
-        else:
+        elif k == "seeds":
             seed = v
+        else:
+            seed = 0
     options.append("-o")
     options.append(f"name='{args.base_name}'")
 
@@ -92,18 +97,22 @@ for i, p in enumerate(get_combinations(params)):
         sys.executable,
         f"{orig_path}/SMMain.py",
         "-n",
+        f"{args.base_name}",
+        "-d",
         f"{run_id}",
         "-s",
         f"{seed}",
         "-t",
         "55000",
-        "-x",
         "-g",
         "--wdb_project",
         "grasp-simulation",
         "--wdb_entity",
         "francesco-mannella",
     ]
+
+    if args.plot:
+        command.append("-x")
 
     if args.wandb:
         command.append("-w")
@@ -112,13 +121,12 @@ for i, p in enumerate(get_combinations(params)):
     print(f"Running: {' '.join(command)}")
 
     if not os.path.exists(f"simulations/{run_id}"):
-
-        with open(f"{run_id}.log", "w") as log:
+        with open(f"{run_id}.log", "w") as log, open(f"{run_id}.err", "w") as err:
             processes.append(
                 subprocess.Popen(
                     command,
                     stdout=log,
-                    stderr=subprocess.STDOUT,
+                    stderr=err,
                     start_new_session=True,
                     close_fds=True,
                     text=True,

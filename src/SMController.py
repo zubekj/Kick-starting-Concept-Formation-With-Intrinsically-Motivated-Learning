@@ -435,9 +435,7 @@ class SMController:
         self.rng = state["rng"]
         self.maxmatch = state["maxmatch"]
 
-    def save(self, epoch, tag=None):
-
-        suffix = "" if tag is None else f"-{tag}"
+    def save(self, epoch, suffix=""):
 
         weights = {
             "visual": self.stm_v.get_weights(),

@@ -2003,26 +2003,27 @@ class Main:
 
                 np.save(self.sm.epoch_dir / "main.dump", [self], allow_pickle=True)
 
+                self.diagnose(controller=self.controller)
                 self.diagnose(controller=self.controller_par, suffix="_par")
 
                 time_elapsed = time.perf_counter() - epoch_start
                 print("---- TIME: %10.4f" % time_elapsed, flush=True)
                 epoch_start = time.perf_counter()
-
-                self.controller_par.save(epoch, tag="parasite")
-                self.gm.visual_map(wfile=self.sm.site_dir / "weights-parasite.npy")
-                self.gm.comp_map(wfile=self.sm.site_dir / "comp_grid-parasite.npy")
-
-                if use_wandb:
-                    log_data = {
-                        "visual_map_par": wandb.Image(
-                            str(self.sm.site_dir / "visual_map.png")
-                        ),
-                        "comp_map_par": wandb.Image(
-                            str(self.sm.site_dir / "comp_map.png")
-                        ),
-                    }
-                    wandb.log(log_data, step=epoch)
+                
+                # self.controller_par.save(epoch, tag="parasite")
+                # self.gm.visual_map(wfile=self.sm.site_dir / "weights-parasite.npy")
+                # self.gm.comp_map(wfile=self.sm.site_dir / "comp_grid-parasite.npy")
+                #
+                # if use_wandb:
+                #     log_data = {
+                #         "visual_map_par": wandb.Image(
+                #             str(self.sm.site_dir / "visual_map.png")
+                #         ),
+                #         "comp_map_par": wandb.Image(
+                #             str(self.sm.site_dir / "comp_map.png")
+                #         ),
+                #     }
+                #     wandb.log(log_data, step=epoch)
 
             epoch += 1
             self.epoch = epoch
@@ -2052,22 +2053,22 @@ class Main:
         epoch = self.epoch
 
         data = {}
-        data["match_value"] = self.controller.model_data["match_value"]
-        data["match_value_per_mod"] = self.controller.model_data["match_value_per_mod"]
-        data["v_r"] = self.controller.model_data["v_r"]
-        data["ss_r"] = self.controller.model_data["ss_r"]
-        data["p_r"] = self.controller.model_data["p_r"]
-        data["a_r"] = self.controller.model_data["a_r"]
-        data["v"] = self.controller.model_data["batch_v"]
-        data["ss"] = self.controller.model_data["batch_ss"]
-        data["p"] = self.controller.model_data["batch_p"]
-        data["a"] = self.controller.model_data["batch_a"]
+        data["match_value"] = controller.model_data["match_value"]
+        data["match_value_per_mod"] = controller.model_data["match_value_per_mod"]
+        data["v_r"] = controller.model_data["v_r"]
+        data["ss_r"] = controller.model_data["ss_r"]
+        data["p_r"] = controller.model_data["p_r"]
+        data["a_r"] = controller.model_data["a_r"]
+        data["v"] = controller.model_data["batch_v"]
+        data["ss"] = controller.model_data["batch_ss"]
+        data["p"] = controller.model_data["batch_p"]
+        data["a"] = controller.model_data["batch_a"]
 
-        controller.save(epoch)
+        controller.save(epoch, suffix=suffix)
 
-        np.save(self.sm.epoch_dir / "data", [data])
-        np.save(self.sm.site_dir / "log", logs[: epoch + 1])
-        np.save(self.sm.epoch_dir / "log", logs[: epoch + 1])
+        np.save(self.sm.epoch_dir / f"data{suffix}", [data])
+        np.save(self.sm.site_dir / f"log{suffix}", logs[: epoch + 1])
+        np.save(self.sm.epoch_dir / f"log{suffix}", logs[: epoch + 1])
 
         print("----> Evaluation tests  ...", flush=True)
         gc, tr = self.evaluation_episodes(
@@ -2079,21 +2080,21 @@ class Main:
             orig_controller=controller,
         )
 
-        tr.to_csv(self.sm.epoch_dir / "trajectories.csv")
+        tr.to_csv(self.sm.epoch_dir / f"trajectories{suffix}.csv")
 
         print("----> Map renderings  ...", flush=True)
-        self.gm.log()
-        self.gm.visual_map()
-        self.gm.comp_map()
-        self.gm.somatosensory_map()
-        self.gm.proprio_map()
+        self.gm.log(suffix=suffix)
+        self.gm.visual_map(suffix=suffix)
+        self.gm.comp_map(suffix=suffix)
+        self.gm.somatosensory_map(suffix=suffix)
+        self.gm.proprio_map(suffix=suffix)
 
         if use_wandb:
             log_data = {
-                "visual_map": wandb.Image(self.sm.site_dir / "visual_map.png"),
-                "comp_map": wandb.Image(self.sm.site_dir / "comp_map.png"),
-                "ssensory_map": wandb.Image(self.sm.site_dir / "ssensory_map.png"),
-                "proprio_map": wandb.Image(self.sm.site_dir / "proprio_map.png"),
+                f"visual_map{suffix}": wandb.Image(self.sm.site_dir / f"visual_map{suffix}.png"),
+                f"comp_map{suffix}": wandb.Image(self.sm.site_dir / f"comp_map{suffix}.png"),
+                f"ssensory_map{suffix}": wandb.Image(self.sm.site_dir / f"ssensory_map{suffix}.png"),
+                f"proprio_map{suffix}": wandb.Image(self.sm.site_dir / f"proprio_map{suffix}.png"),
             }
             wandb.log(log_data, step=epoch)
 

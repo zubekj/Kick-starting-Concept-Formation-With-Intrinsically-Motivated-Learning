@@ -138,9 +138,9 @@ class GraphManager:
 
         return segments
 
-    def trajectories_map(self, wfile=None, ax=None, palette=None):
+    def trajectories_map(self, wfile=None, ax=None, palette=None, suffix=""):
         if wfile is None:
-            wfile = self.sm.site_dir / "trajectories.npy"
+            wfile = self.sm.site_dir / f"trajectories{suffix}.npy"
         data = np.load(wfile, allow_pickle=True)
         cells, stime, _ = data.shape
         side = int(np.sqrt(cells))
@@ -169,10 +169,10 @@ class GraphManager:
             fig.tight_layout(pad=0.0)
             fig.savefig(self.sm.site_dir / "trajectories.png")
 
-    def policy_map(self, wfile=None, ax=None):
+    def policy_map(self, wfile=None, ax=None, suffix=""):
         side = int(np.sqrt(self.params.internal_size))
         if wfile is None:
-            wfile = self.sm.site_dir / "weights.npy"
+            wfile = self.sm.site_dir / f"weights{suffix}.npy"
         data = np.load(wfile, allow_pickle=True)[0]["policy"].T
         pca = PCA(n_components=3)
         data_pca = pca.fit_transform(data)
@@ -185,14 +185,14 @@ class GraphManager:
         if fig:
             fig.tight_layout(pad=0.0)
             dir_ = self.sm.site_dir if self.sm.site_dir.exists() else Path(".")
-            fig.savefig(dir_ / "policy_map.png")
+            fig.savefig(dir_ / f"policy_map{suffix}.png")
 
-    def visual_map(self, wfile=None, ax=None):
+    def visual_map(self, wfile=None, ax=None, suffix=""):
         internal_side = int(np.sqrt(self.params.internal_size))
         visual_side = int(np.sqrt(self.params.visual_size // 3))
 
         if wfile is None:
-            wfile = self.sm.site_dir / "weights.npy"
+            wfile = self.sm.site_dir / f"weights{suffix}.npy"
         data_v = np.load(wfile, allow_pickle=True)[0]["visual"]
         data_v = data_v.reshape(visual_side, visual_side, 3, internal_side, internal_side)
         data_v = data_v.transpose(3, 0, 4, 1, 2)
@@ -209,13 +209,13 @@ class GraphManager:
         ax.set_axis_off()
         if fig:
             fig.tight_layout(pad=0.0)
-            fig.savefig(self.sm.site_dir / "visual_map.png")
+            fig.savefig(self.sm.site_dir / f"visual_map{suffix}.png")
             plt.close("all")
 
-    def proprio_map(self, wfile=None, ax=None):
+    def proprio_map(self, wfile=None, ax=None, suffix=""):
         internal_side = int(np.sqrt(self.params.internal_size))
         if wfile is None:
-            wfile = self.sm.site_dir / "weights.npy"
+            wfile = self.sm.site_dir / f"weights{suffix}.npy"
         data = np.load(wfile, allow_pickle=True)[0]["proprio"]
         ss_dim, _ = data.shape
         data = data.reshape(ss_dim, internal_side, internal_side)
@@ -237,14 +237,14 @@ class GraphManager:
         ax.set_axis_off()
         if fig:
             fig.tight_layout(pad=0.0)
-            fig.savefig(self.sm.site_dir / "proprio_map.png")
+            fig.savefig(self.sm.site_dir / f"proprio_map{suffix}.png")
             plt.close("all")
 
-    def somatosensory_map(self, wfile=None, ax=None):
+    def somatosensory_map(self, wfile=None, ax=None, suffix=""):
 
         internal_side = int(np.sqrt(self.params.internal_size))
         if wfile is None:
-            wfile = self.sm.site_dir / "weights.npy"
+            wfile = self.sm.site_dir / f"weights{suffix}.npy"
         data = np.load(wfile, allow_pickle=True)[0]["ssensory"]
         ss_dim, _ = data.shape
         data = data.reshape(ss_dim, internal_side, internal_side)
@@ -263,13 +263,13 @@ class GraphManager:
         ax.set_axis_off()
         if fig:
             fig.tight_layout(pad=0.0)
-            fig.savefig(self.sm.site_dir / "ssensory_map.png")
+            fig.savefig(self.sm.site_dir / f"ssensory_map{suffix}.png")
             plt.close("all")
 
-    def comp_map(self, wfile=None, ax=None):
+    def comp_map(self, wfile=None, ax=None, suffix=""):
         internal_side = int(np.sqrt(self.params.internal_size))
         if wfile is None:
-            wfile = self.sm.site_dir / "comp_grid.npy"
+            wfile = self.sm.site_dir / f"comp_grid{suffix}.npy"
         data_c = np.load(wfile, allow_pickle=True)
         data_c = data_c.reshape(internal_side, internal_side)
         if ax is None:
@@ -278,7 +278,7 @@ class GraphManager:
             ax.imshow(data_c, vmin=0, vmax=1)
             ax.set_axis_off()
             fig.tight_layout(pad=0.0)
-            fig.savefig(self.sm.site_dir / "comp_map.png")
+            fig.savefig(self.sm.site_dir / f"comp_map{suffix}.png")
             plt.close("all")
         else:
             ax.imshow(data_c, vmin=0, vmax=1)
@@ -328,9 +328,9 @@ class GraphManager:
         vm.mk_video(name=name, dirname=".")
         plt.close("all")
 
-    def log(self, wfile=None):
+    def log(self, wfile=None, suffix=""):
         if wfile is None:
-            wfile = self.sm.site_dir / "log.npy"
+            wfile = self.sm.site_dir / f"log{suffix}.npy"
         log_data = np.load(wfile, allow_pickle=True)
         fig = plt.figure(figsize=(4, 2))
         ax = fig.add_subplot(111)
@@ -343,7 +343,7 @@ class GraphManager:
         m = log_data.max()
         if m > 0:
             ax.set_ylim([-m * 0.1, m * 1.1])
-        fig.savefig(self.sm.site_dir / "log.png")
+        fig.savefig(self.sm.site_dir / f"log{suffix}.png")
         plt.close("all")
 
 

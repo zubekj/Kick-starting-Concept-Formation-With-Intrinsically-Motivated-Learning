@@ -2010,7 +2010,7 @@ class Main:
                 epoch_start = time.perf_counter()
 
                 self.controller_par.save(epoch, tag="parasite")
-                self.gm.visual_map(wfile=self.sm.site_dir / "visual_weights-parasite.npy")
+                self.gm.visual_map(wfile=self.sm.site_dir / "weights-parasite.npy")
                 self.gm.comp_map(wfile=self.sm.site_dir / "comp_grid-parasite.npy")
 
                 if use_wandb:

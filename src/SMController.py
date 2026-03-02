@@ -448,13 +448,13 @@ class SMController:
         }
 
         np.save(
-            f"{self.sm.epoch_dir}/weights",
+            f"{self.sm.epoch_dir}/weights{suffix}",
             [weights],
             allow_pickle=True,
         )
 
         np.save(
-            f"{self.sm.site_dir}/weights",
+            f"{self.sm.site_dir}/weights{suffix}",
             [weights],
             allow_pickle=True,
         )

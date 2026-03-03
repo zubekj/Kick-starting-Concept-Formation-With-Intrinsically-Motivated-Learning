@@ -2848,8 +2848,6 @@ if __name__ == "__main__":
         weights = np.load(args.load_weights, allow_pickle=True)[0]
         main.controller.load(weights=weights)
 
-        main.controller.save(main.epoch)
-
     print(main.epoch)
 
     try:
